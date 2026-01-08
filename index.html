@@ -67,6 +67,7 @@ label{font-weight:bold;}
     <option>Peças</option>
     <option>Hospedagem</option>
     <option>Outros</option>
+    <option>Carro próprio</option>
   </select>
 
   <select id="refeicao" class="hidden" onchange="controleRefeicao()">
@@ -81,6 +82,11 @@ label{font-weight:bold;}
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
+  <div id="carroProprioCampos" class="hidden">
+    <input type="number" id="kmPercorrido" placeholder="Total de km percorrido">
+    <input type="number" id="valorCarro" placeholder="Valor total (R$)">
+  </div>
+
   <!-- Botões de anexos para despesas -->
   <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
   <input type="file" id="camera" accept="image/*" capture="environment" multiple hidden>
@@ -89,22 +95,6 @@ label{font-weight:bold;}
   <input type="file" id="galeria" accept="image/*" multiple hidden>
 
   <button onclick="addDespesa()">Adicionar despesa</button>
-</div>
-
-<div class="card">
-  <input type="checkbox" id="veiculoProprio" onchange="toggleVeiculo()">
-  <label for="veiculoProprio">Veículo próprio</label>
-  <div id="veiculoCampos" class="hidden">
-    <button class="btn-sec" onclick="kmInicialC.click()">📸 Foto KM Inicial (Câmera)</button>
-    <input type="file" id="kmInicialC" accept="image/*" capture="environment" multiple hidden>
-    <button class="btn-sec" onclick="kmInicialG.click()">🖼️ Foto KM Inicial (Galeria)</button>
-    <input type="file" id="kmInicialG" accept="image/*" multiple hidden>
-
-    <button class="btn-sec" onclick="kmFinalC.click()">📸 Foto KM Final (Câmera)</button>
-    <input type="file" id="kmFinalC" accept="image/*" capture="environment" multiple hidden>
-    <button class="btn-sec" onclick="kmFinalG.click()">🖼️ Foto KM Final (Galeria)</button>
-    <input type="file" id="kmFinalG" accept="image/*" multiple hidden>
-  </div>
 </div>
 
 <div class="card">
@@ -124,14 +114,12 @@ label{font-weight:bold;}
 <script>
 let despesas=[],paradas=[];
 
-// Função auxiliar
 function formatarDataBR(data){
   if(!data) return "";
   const [y,m,d]=data.split("-");
   return `${d}/${m}/${y}`;
 }
 
-// Adicionar ponto de parada
 function addParada(){
   const div=document.createElement("div");
   div.innerHTML=`<input list="cidades" placeholder="Cidade de parada">`;
@@ -139,13 +127,14 @@ function addParada(){
   document.getElementById("paradas").appendChild(div);
 }
 
-// Controle categoria e alimentação
 function controleCategoria(){
   refeicao.classList.toggle("hidden",categoria.value!=="Alimentação");
   qtd.classList.toggle("hidden",categoria.value!=="Alimentação");
   outrosTexto.classList.toggle("hidden",categoria.value!=="Outros");
+  carroProprioCampos.classList.toggle("hidden",categoria.value!=="Carro próprio");
   valorDespesa.readOnly=false;
   valorDespesa.value="";
+  kmPercorrido.value=""; valorCarro.value="";
 }
 
 function controleRefeicao(){ calcularRefeicao(); }
@@ -163,9 +152,20 @@ function calcularRefeicao(){
   }
 }
 
-// Adicionar despesa
 function addDespesa(){
-  if(!categoria.value || !valorDespesa.value) return alert("Preencha os dados");
+  if(!categoria.value) return alert("Preencha a categoria");
+
+  let valor=0;
+  let infoExtras="";
+
+  if(categoria.value==="Carro próprio"){
+    if(!kmPercorrido.value || !valorCarro.value) return alert("Preencha km e valor do carro próprio");
+    valor=parseFloat(valorCarro.value);
+    infoExtras=`Km percorrido: ${kmPercorrido.value}`;
+  } else {
+    if(!valorDespesa.value) return alert("Preencha o valor da despesa");
+    valor=parseFloat(valorDespesa.value);
+  }
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
     const r=new FileReader();
@@ -178,26 +178,22 @@ function addDespesa(){
       categoria:categoria.value,
       refeicao:refeicao.value,
       qtd:qtd.value,
-      valor:parseFloat(valorDespesa.value),
-      outros:outrosTexto.value,
+      valor:valor,
+      outros:categoria.value==="Carro próprio"?infoExtras:outrosTexto.value,
       imagens:imgs
     });
 
     lista.innerHTML+=`
       <div class="despesa">
-        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valorDespesa.value} ${outrosTexto.value ? "- "+outrosTexto.value : ""}
+        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valor} ${categoria.value==="Carro próprio"?infoExtras:(outrosTexto.value? "- "+outrosTexto.value:"")}
       </div>
     `;
 
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
+    kmPercorrido.value=valorCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
-}
-
-// Veículo próprio
-function toggleVeiculo(){
-  veiculoCampos.classList.toggle("hidden",!veiculoProprio.checked);
 }
 
 // Borda PDF
@@ -205,14 +201,12 @@ function desenharBorda(pdf){
   pdf.rect(5,5,200,287);
 }
 
-// Finalizar e gerar PDF completo
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   let y=15;
-
   const adiant=parseFloat(adiantamento.value)||0;
   let total=0;
   let porCategoria={};
@@ -245,14 +239,14 @@ function finalizar(){
     porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
     let x=startX;
     const valorUnit = d.refeicao==="Jantar"?40:(d.refeicao==="Almoço"?10:(d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor)));
-    const qtd=parseInt(d.qtd)||1;
+    const qtdVal=parseInt(d.qtd)||1;
     const totalItem=d.valor;
-    [d.categoria,d.refeicao||"",qtd.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
+    [d.categoria,d.refeicao||"",qtdVal.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
       pdf.rect(x,y,colWidths[i],7);
       pdf.text(txt,x+1,y+5);
       x+=colWidths[i];
     });
-    if(d.outros) { pdf.text("Obs: "+d.outros,startX,y+5); } // Mostrar outros
+    if(d.outros) { pdf.text("Obs: "+d.outros,startX,y+5); }
     y+=7;
     if(y>250){pdf.addPage();desenharBorda(pdf);y=15;}
   });
@@ -271,42 +265,30 @@ function finalizar(){
 
   if(observacoes.value) { y+=4; pdf.text(`Observações: ${observacoes.value}`,startX,y); y+=6; }
 
-  // Veículo próprio imagens
-  const veiculoArquivos=[...kmInicialC.files,...kmInicialG.files,...kmFinalC.files,...kmFinalG.files].map(f=>new Promise(res=>{
+  // Anexos imagens
+  const anexos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
     const r=new FileReader();
     r.onload=e=>res(e.target.result);
     r.readAsDataURL(f);
   }));
 
-  Promise.all(veiculoArquivos).then(veiculoImgsArray=>{
-    // Anexos gerais
-    pdf.addPage();
-    desenharBorda(pdf);
-    y=15;
-    pdf.text("Anexos:",startX,y);y+=10;
-
-    // Despesas imagens
-    despesas.forEach(d=>{
-      d.imagens.forEach(img=>{
-        if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
-        pdf.addImage(img,"JPEG",startX,y,80,60);y+=70;
-      });
-    });
-
-    // Veículo próprio imagens
-    veiculoImgsArray.forEach(img=>{
+  Promise.all(anexos).then(imgs=>{
+    pdf.addPage(); desenharBorda(pdf); y=15; pdf.text("Anexos:",startX,y); y+=10;
+    imgs.forEach(img=>{
       if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
-      pdf.addImage(img,"JPEG",startX,y,80,60);y+=70;
+      pdf.addImage(img,"JPEG",startX,y,80,60); y+=70;
     });
-
     pdf.save("Despesas_Cirurtec.pdf");
 
     // Limpar tudo
     despesas=[]; lista.innerHTML="";
     paradas=[]; document.getElementById("paradas").innerHTML="";
     origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
-    veiculoProprio.checked=false; toggleVeiculo();
     observacoes.value="";
+    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
+    kmPercorrido.value=valorCarro.value="";
+    camera.value=galeria.value="";
+    controleCategoria();
   });
 }
 </script>
