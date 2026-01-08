@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -48,17 +48,15 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px}
 
   <select id="refeicao" class="hidden" onchange="controleRefeicao()">
     <option value="">Tipo de refeição</option>
-    <option value="Café da manhã">Café da manhã</option>
-    <option value="Almoço">Almoço</option>
-    <option value="Café da tarde">Café da tarde</option>
-    <option value="Jantar">Jantar</option>
+    <option>Café da manhã</option>
+    <option>Almoço</option>
+    <option>Café da tarde</option>
+    <option>Jantar</option>
   </select>
 
   <input id="outrosTexto" class="hidden" placeholder="Especificar">
-
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
-
-  <input type="file" id="anexo" accept="image/*,application/pdf" multiple>
+  <input type="file" id="anexo" accept="image/*" multiple>
 
   <button onclick="addDespesa()">Adicionar despesa</button>
 </div>
@@ -100,25 +98,41 @@ function controleRefeicao(){
 function addDespesa(){
   if(!categoria.value||!valorDespesa.value)return alert("Preencha os dados");
 
-  despesas.push({
-    categoria:categoria.value,
-    refeicao:refeicao.value,
-    outros:outrosTexto.value,
-    valor:parseFloat(valorDespesa.value)
+  const arquivos=[...anexo.files].map(f=>new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.readAsDataURL(f);
+  }));
+
+  Promise.all(arquivos).then(imgs=>{
+    despesas.push({
+      categoria:categoria.value,
+      refeicao:refeicao.value,
+      outros:outrosTexto.value,
+      valor:parseFloat(valorDespesa.value),
+      imagens:imgs
+    });
+
+    lista.innerHTML+=`<div class="despesa">${categoria.value} ${refeicao.value} – R$ ${valorDespesa.value}</div>`;
+    categoria.value=refeicao.value=outrosTexto.value=valorDespesa.value="";
+    anexo.value="";
+    controleCategoria();
   });
-
-  lista.innerHTML+=`<div class="despesa">${categoria.value} ${refeicao.value} – R$ ${valorDespesa.value}</div>`;
-
-  categoria.value="";refeicao.value="";outrosTexto.value="";valorDespesa.value="";
-  controleCategoria();
 }
 
 function finalizar(){
-  if(!confirm("Finalizar viagem?"))return;
+  if(!confirm("Finalizar viagem e gerar PDF?"))return;
 
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF();
   let y=10,total=0;
+
+  pdf.text("Despesas Cirurtec",10,y);y+=8;
+  pdf.text(`Nome: ${nome.value}`,10,y);y+=6;
+  pdf.text(`Email: ${email.value}`,10,y);y+=6;
+  pdf.text(`Período: ${dataInicio.value} a ${dataFim.value}`,10,y);y+=6;
+  pdf.text(`Adiantamento: R$ ${adiantamento.value}`,10,y);y+=10;
+
   let resumo={
     "Café da manhã":[],
     "Almoço":[],
@@ -126,12 +140,24 @@ function finalizar(){
     "Jantar":[]
   };
 
-  despesas.forEach(d=>{
+  despesas.forEach((d,i)=>{
     total+=d.valor;
     if(resumo[d.refeicao])resumo[d.refeicao].push(d.valor);
+
+    pdf.text(`${i+1}. ${d.categoria} ${d.refeicao} – R$ ${d.valor.toFixed(2)}`,10,y);
+    y+=6;
+
+    d.imagens.forEach(img=>{
+      if(y>250){pdf.addPage();y=10}
+      pdf.addImage(img,"JPEG",10,y,60,45);
+      y+=50;
+    });
   });
 
+  pdf.addPage();
+  y=10;
   pdf.text("Resumo de Alimentação",10,y);y+=8;
+
   for(let r in resumo){
     if(resumo[r].length){
       const soma=resumo[r].reduce((a,b)=>a+b,0);
@@ -141,10 +167,11 @@ function finalizar(){
   }
 
   y+=8;
-  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`,10,y);
-  pdf.text(`Saldo: R$ ${(adiantamento.value-total).toFixed(2)}`,10,y+6);
+  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`,10,y);y+=6;
+  pdf.text(`Saldo: R$ ${(adiantamento.value-total).toFixed(2)}`,10,y);
 
   pdf.save("Despesas_Cirurtec.pdf");
+
   despesas=[];lista.innerHTML="";
 }
 </script>
