@@ -11,7 +11,7 @@
 body{font-family:Arial, sans-serif;background:#f4f4f4;padding:15px;}
 h1{text-align:center;}
 .card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;}
-input,select,button{width:100%;padding:10px;margin-top:8px;}
+input,select,button,textarea{width:100%;padding:10px;margin-top:8px;}
 button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
 .btn-sec{background:#455a64;margin-top:5px;}
 .hidden{display:none;}
@@ -19,6 +19,7 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
 table{border-collapse:collapse;width:100%;}
 th, td{border:1px solid #000;padding:5px;text-align:left;font-size:10px;}
 th{background:#eee;}
+label{font-weight:bold;}
 </style>
 </head>
 
@@ -41,7 +42,9 @@ th{background:#eee;}
 </div>
 
 <div class="card">
+  <label>Data início</label>
   <input type="date" id="dataInicio">
+  <label>Data final</label>
   <input type="date" id="dataFim">
   <input type="number" id="adiantamento" placeholder="Valor do adiantamento (R$)">
 </div>
@@ -76,7 +79,7 @@ th{background:#eee;}
 
   <input type="number" id="qtd" class="hidden" min="1" max="6" placeholder="Quantidade (1 a 6)" onchange="calcularRefeicao()">
 
-  <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
+  <input id="outrosTexto" class="hidden" placeholder="Descrição da despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
   <!-- Botões de anexos -->
@@ -92,6 +95,11 @@ th{background:#eee;}
 <div class="card">
   <h3>Despesas lançadas</h3>
   <div id="lista"></div>
+</div>
+
+<div class="card">
+  <label>Observações gerais (até 200 caracteres)</label>
+  <textarea id="observacoes" maxlength="200" placeholder="Digite suas observações aqui..."></textarea>
 </div>
 
 <div class="card">
@@ -137,12 +145,14 @@ function calcularRefeicao(){
   if(valores[refeicao.value] && qtd.value){
     valorDespesa.value = valores[refeicao.value]*qtd.value;
     valorDespesa.readOnly = true;
+  } else {
+    valorDespesa.readOnly=false;
   }
 }
 
 // Adicionar despesa
 function addDespesa(){
-  if(!categoria.value || !valorDespesa.value) return alert("Preencha os dados");
+  if(!categoria.value || (!valorDespesa.value && categoria.value!=="Outros")) return alert("Preencha os dados");
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
     const r=new FileReader();
@@ -155,14 +165,14 @@ function addDespesa(){
       categoria:categoria.value,
       refeicao:refeicao.value,
       qtd:qtd.value,
-      valor:parseFloat(valorDespesa.value),
+      valor:parseFloat(valorDespesa.value)||0,
       outros:outrosTexto.value,
       imagens:imgs
     });
 
     lista.innerHTML+=`
       <div class="despesa">
-        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valorDespesa.value}
+        ${categoria.value==="Outros"?`Outros: ${outrosTexto.value}`:categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valorDespesa.value}
       </div>
     `;
 
@@ -177,14 +187,13 @@ function desenharBorda(pdf){
   pdf.rect(5,5,200,287);
 }
 
-// Gerar PDF completo com tabela
+// Gerar PDF completo com tabela e anexos
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   let y=15;
-
   const adiant=parseFloat(adiantamento.value)||0;
   let total=0;
   let porCategoria={};
@@ -197,32 +206,30 @@ function finalizar(){
   pdf.text(`Técnico: ${nome.value}`,10,y);y+=6;
   pdf.text(`Período: ${formatarDataBR(dataInicio.value)} a ${formatarDataBR(dataFim.value)}`,10,y);y+=6;
   pdf.text(`Ponto inicial: ${origem.value}`,10,y);y+=6;
-  paradas.forEach((p,i)=>{
-    pdf.text(`Parada ${i+1}: ${p.querySelector("input").value}`,10,y);y+=6;
-  });
+  paradas.forEach((p,i)=>{ pdf.text(`Parada ${i+1}: ${p.querySelector("input").value}`,10,y);y+=6; });
   y+=4;
 
-  // Tabela de despesas
+  // Tabela despesas
   const startX=10;
   pdf.text("Despesas detalhadas:",startX,y); y+=5;
   const colWidths=[50,40,20,25,25];
   const colTitles=["Categoria","Refeição","Qtd","Valor unitário","Total"];
   pdf.setFontSize(10);
-  // Cabeçalho tabela
   let x=startX;
   colTitles.forEach((t,i)=>{pdf.rect(x,y, colWidths[i],7); pdf.text(t,x+1,y+5); x+=colWidths[i];});
   y+=7;
 
   despesas.forEach(d=>{
     total+=d.valor;
-    porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
+    const catName=d.categoria==="Outros"?`Outros: ${d.outros}`:d.categoria;
+    porCategoria[catName]=(porCategoria[catName]||0)+d.valor;
 
     let x=startX;
-    const valorUnit = d.refeicao==="Jantar"?40: (d.refeicao==="Almoço"?10: (d.refeicao==="Café da tarde"?10: (d.refeicao==="Café da manhã"?10:d.valor)));
+    const valorUnit = d.refeicao==="Jantar"?40: (d.refeicao==="Almoço"?10: (d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor)));
     const qtd=parseInt(d.qtd)||1;
     const totalItem=d.valor;
 
-    [d.categoria,d.refeicao||"",qtd.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
+    [catName,d.refeicao||"",qtd.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
       pdf.rect(x,y,colWidths[i],7);
       pdf.text(txt,x+1,y+5);
       x+=colWidths[i];
@@ -235,24 +242,22 @@ function finalizar(){
   pdf.text("Resumo final:",startX,y);y+=6;
   pdf.text(`Valor adiantado: R$ ${adiant.toFixed(2)}`,startX,y);y+=6;
   pdf.text("Gastos por categoria:",startX,y);y+=6;
-  for(let c in porCategoria){
-    pdf.text(`${c}: R$ ${porCategoria[c].toFixed(2)}`,startX,y);y+=6;
-  }
+  for(let c in porCategoria){ pdf.text(`${c}: R$ ${porCategoria[c].toFixed(2)}`,startX,y); y+=6; }
   y+=4;
   pdf.text(`Valor total gasto: R$ ${total.toFixed(2)}`,startX,y);y+=6;
   const saldo=adiant-total;
   pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,startX,y);y+=6;
 
-  // Anexos
-  pdf.addPage();
-  desenharBorda(pdf);
-  y=15;
-  pdf.text("Anexos:",startX,y);y+=10;
+  if(observacoes.value){ y+=4; pdf.text(`Observações: ${observacoes.value}`,startX,y); y+=6; }
+
+  // Imagens anexadas
+  let imgY=15;
+  pdf.addPage(); desenharBorda(pdf); pdf.text("Anexos:",10,15);
+  imgY=25;
   despesas.forEach(d=>{
     d.imagens.forEach(img=>{
-      if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
-      pdf.addImage(img,"JPEG",startX,y,80,60);
-      y+=70;
+      if(imgY>220){pdf.addPage(); desenharBorda(pdf); imgY=15;}
+      pdf.addImage(img,"JPEG",10,imgY,80,60); imgY+=70;
     });
   });
 
