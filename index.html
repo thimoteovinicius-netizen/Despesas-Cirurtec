@@ -11,7 +11,7 @@
 body{font-family:Arial, sans-serif;background:#f4f4f4;padding:15px;}
 h1{text-align:center;}
 .card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;}
-input,select,button,textarea{width:100%;padding:10px;margin-top:8px;}
+input,select,button{width:100%;padding:10px;margin-top:8px;}
 button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
 .btn-sec{background:#455a64;margin-top:5px;}
 .hidden{display:none;}
@@ -19,7 +19,6 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
 table{border-collapse:collapse;width:100%;}
 th, td{border:1px solid #000;padding:5px;text-align:left;font-size:10px;}
 th{background:#eee;}
-label{font-weight:bold;}
 </style>
 </head>
 
@@ -42,9 +41,7 @@ label{font-weight:bold;}
 </div>
 
 <div class="card">
-  <label>Data início</label>
   <input type="date" id="dataInicio">
-  <label>Data final</label>
   <input type="date" id="dataFim">
   <input type="number" id="adiantamento" placeholder="Valor do adiantamento (R$)">
 </div>
@@ -67,10 +64,8 @@ label{font-weight:bold;}
     <option>Peças</option>
     <option>Hospedagem</option>
     <option>Outros</option>
-    <option>Carro próprio</option>
   </select>
 
-  <!-- Refeições -->
   <select id="refeicao" class="hidden" onchange="controleRefeicao()">
     <option value="">Tipo de refeição</option>
     <option>Café da manhã</option>
@@ -81,27 +76,17 @@ label{font-weight:bold;}
 
   <input type="number" id="qtd" class="hidden" min="1" max="6" placeholder="Quantidade (1 a 6)" onchange="calcularRefeicao()">
 
-  <!-- Campo para outros -->
-  <input id="outrosTexto" class="hidden" placeholder="Descrição da despesa">
-
-  <!-- Campo de valor -->
+  <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
-
-  <!-- Campo para Carro próprio (apenas valor) -->
-  <input type="number" id="valorCarro" class="hidden" placeholder="Valor (R$)">
 
   <!-- Botões de anexos -->
   <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
   <input type="file" id="camera" accept="image/*" capture="environment" multiple hidden>
+
   <button class="btn-sec" onclick="galeria.click()">🖼️ Galeria</button>
   <input type="file" id="galeria" accept="image/*" multiple hidden>
 
   <button onclick="addDespesa()">Adicionar despesa</button>
-</div>
-
-<div class="card">
-  <label>Observações gerais (até 200 caracteres)</label>
-  <textarea id="observacoes" maxlength="200" placeholder="Digite suas observações aqui..."></textarea>
 </div>
 
 <div class="card">
@@ -116,14 +101,14 @@ label{font-weight:bold;}
 <script>
 let despesas=[],paradas=[];
 
-// Formata data para dia/mês/ano
+// Funções auxiliares
 function formatarDataBR(data){
   if(!data) return "";
   const [y,m,d]=data.split("-");
   return `${d}/${m}/${y}`;
 }
 
-// Adiciona ponto de parada
+// Adicionar ponto de parada
 function addParada(){
   const div=document.createElement("div");
   div.innerHTML=`<input list="cidades" placeholder="Cidade de parada">`;
@@ -131,21 +116,15 @@ function addParada(){
   document.getElementById("paradas").appendChild(div);
 }
 
-// Controle de categorias
+// Controle categoria e alimentação
 function controleCategoria(){
   refeicao.classList.toggle("hidden",categoria.value!=="Alimentação");
   qtd.classList.toggle("hidden",categoria.value!=="Alimentação");
   outrosTexto.classList.toggle("hidden",categoria.value!=="Outros");
-  valorCarro.classList.toggle("hidden",categoria.value!=="Carro próprio");
-  valorDespesa.classList.toggle("hidden",categoria.value==="Carro próprio");
+  valorDespesa.readOnly=false;
   valorDespesa.value="";
-  valorCarro.value="";
-  outrosTexto.value="";
-  qtd.value="";
-  refeicao.value="";
 }
 
-// Controle refeições
 function controleRefeicao(){ calcularRefeicao(); }
 
 function calcularRefeicao(){
@@ -158,26 +137,12 @@ function calcularRefeicao(){
   if(valores[refeicao.value] && qtd.value){
     valorDespesa.value = valores[refeicao.value]*qtd.value;
     valorDespesa.readOnly = true;
-  } else {
-    valorDespesa.readOnly=false;
   }
 }
 
-// Adiciona despesa
+// Adicionar despesa
 function addDespesa(){
-  if(!categoria.value) return alert("Preencha a categoria");
-
-  let valor=0;
-  let infoExtras="";
-  if(categoria.value==="Carro próprio"){
-    valor = parseFloat(valorCarro.value)||0;
-  } else if(categoria.value==="Outros"){
-    infoExtras = outrosTexto.value;
-    if(!infoExtras) return alert("Preencha a descrição da despesa 'Outros'");
-    valor = parseFloat(valorDespesa.value)||0;
-  } else {
-    valor = parseFloat(valorDespesa.value)||0;
-  }
+  if(!categoria.value || !valorDespesa.value) return alert("Preencha os dados");
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
     const r=new FileReader();
@@ -190,18 +155,18 @@ function addDespesa(){
       categoria:categoria.value,
       refeicao:refeicao.value,
       qtd:qtd.value,
-      valor:valor,
-      outros:infoExtras,
+      valor:parseFloat(valorDespesa.value),
+      outros:outrosTexto.value,
       imagens:imgs
     });
 
     lista.innerHTML+=`
       <div class="despesa">
-        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valor} ${infoExtras ? "- "+infoExtras : ""}
+        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valorDespesa.value}
       </div>
     `;
 
-    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value=valorCarro.value="";
+    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
@@ -212,13 +177,14 @@ function desenharBorda(pdf){
   pdf.rect(5,5,200,287);
 }
 
-// Finalizar viagem e gerar PDF
+// Gerar PDF completo com tabela
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   let y=15;
+
   const adiant=parseFloat(adiantamento.value)||0;
   let total=0;
   let porCategoria={};
@@ -236,25 +202,27 @@ function finalizar(){
   });
   y+=4;
 
-  // Tabela despesas
+  // Tabela de despesas
   const startX=10;
   pdf.text("Despesas detalhadas:",startX,y); y+=5;
   const colWidths=[50,40,20,25,25];
   const colTitles=["Categoria","Refeição","Qtd","Valor unitário","Total"];
   pdf.setFontSize(10);
+  // Cabeçalho tabela
   let x=startX;
-  colTitles.forEach((t,i)=>{pdf.rect(x,y,colWidths[i],7);pdf.text(t,x+1,y+5);x+=colWidths[i];});
+  colTitles.forEach((t,i)=>{pdf.rect(x,y, colWidths[i],7); pdf.text(t,x+1,y+5); x+=colWidths[i];});
   y+=7;
 
   despesas.forEach(d=>{
     total+=d.valor;
     porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
+
     let x=startX;
-    const valorUnit = d.refeicao==="Jantar"?40:(d.refeicao==="Almoço"?10:(d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor)));
-    const qtdVal=parseInt(d.qtd)||1;
+    const valorUnit = d.refeicao==="Jantar"?40: (d.refeicao==="Almoço"?10: (d.refeicao==="Café da tarde"?10: (d.refeicao==="Café da manhã"?10:d.valor)));
+    const qtd=parseInt(d.qtd)||1;
     const totalItem=d.valor;
-    const categoriaTexto=d.categoria==="Outros"?`Outros: ${d.outros}`:d.categoria;
-    [categoriaTexto,d.refeicao||"",qtdVal.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
+
+    [d.categoria,d.refeicao||"",qtd.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
       pdf.rect(x,y,colWidths[i],7);
       pdf.text(txt,x+1,y+5);
       x+=colWidths[i];
@@ -275,17 +243,17 @@ function finalizar(){
   const saldo=adiant-total;
   pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,startX,y);y+=6;
 
-  if(observacoes.value) { y+=4; pdf.text(`Observações: ${observacoes.value}`,startX,y); y+=6; }
-
-  // Imagens anexadas
-  let imgY=y+10;
-  pdf.addPage(); desenharBorda(pdf); pdf.text("Anexos:",startX,15);
-  imgY=25;
-  let allImgs=[];
-  despesas.forEach(d=>{allImgs.push(...d.imagens);});
-  allImgs.forEach(img=>{
-    if(imgY>220){pdf.addPage(); desenharBorda(pdf); imgY=25;}
-    pdf.addImage(img,"JPEG",startX,imgY,80,60); imgY+=70;
+  // Anexos
+  pdf.addPage();
+  desenharBorda(pdf);
+  y=15;
+  pdf.text("Anexos:",startX,y);y+=10;
+  despesas.forEach(d=>{
+    d.imagens.forEach(img=>{
+      if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
+      pdf.addImage(img,"JPEG",startX,y,80,60);
+      y+=70;
+    });
   });
 
   pdf.save("Despesas_Cirurtec.pdf");
@@ -294,10 +262,6 @@ function finalizar(){
   despesas=[]; lista.innerHTML="";
   paradas=[]; document.getElementById("paradas").innerHTML="";
   origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
-  observacoes.value="";
-  categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value=valorCarro.value="";
-  camera.value=galeria.value="";
-  controleCategoria();
 }
 </script>
 
