@@ -56,7 +56,15 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px}
 
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
-  <input type="file" id="anexo" accept="image/*" multiple>
+
+  <!-- INPUT CORRIGIDO: CÂMERA + GALERIA -->
+  <input
+    type="file"
+    id="anexo"
+    accept="image/*"
+    capture="environment"
+    multiple
+  >
 
   <button onclick="addDespesa()">Adicionar despesa</button>
 </div>
@@ -75,7 +83,7 @@ let despesas=[];
 
 function formatarDataBR(data){
   if(!data) return "";
-  const [y,m,d] = data.split("-");
+  const [y,m,d]=data.split("-");
   return `${d}/${m}/${y}`;
 }
 
@@ -125,7 +133,8 @@ function addDespesa(){
     lista.innerHTML+=`
       <div class="despesa">
         ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} – R$ ${valorDespesa.value}
-      </div>`;
+      </div>
+    `;
 
     categoria.value=refeicao.value=outrosTexto.value=valorDespesa.value="";
     anexo.value="";
@@ -171,7 +180,6 @@ function finalizar(){
     }
   });
 
-  /* RESUMO FINAL */
   pdf.addPage();
   desenharBorda(pdf);
   y=15;
@@ -191,7 +199,6 @@ function finalizar(){
   const saldo=adiant-total;
   pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,10,y);
 
-  /* ANEXOS */
   pdf.addPage();
   desenharBorda(pdf);
   y=15;
@@ -210,6 +217,7 @@ function finalizar(){
   });
 
   pdf.save("Despesas_Cirurtec.pdf");
+
   despesas=[];
   lista.innerHTML="";
 }
