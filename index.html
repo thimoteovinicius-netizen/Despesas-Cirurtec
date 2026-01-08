@@ -82,9 +82,10 @@ label{font-weight:bold;}
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
+  <!-- Campos para Carro próprio -->
   <div id="carroProprioCampos" class="hidden">
-    <input type="number" id="kmPercorrido" placeholder="Total de km percorrido">
     <input type="number" id="valorCarro" placeholder="Valor total (R$)">
+    <input type="text" id="obsCarro" placeholder="Observação (ex: km, trajeto)">
   </div>
 
   <!-- Botões de anexos para despesas -->
@@ -98,7 +99,7 @@ label{font-weight:bold;}
 </div>
 
 <div class="card">
-  <label>Observações (até 200 caracteres)</label>
+  <label>Observações gerais (até 200 caracteres)</label>
   <textarea id="observacoes" maxlength="200" placeholder="Digite suas observações aqui..."></textarea>
 </div>
 
@@ -114,12 +115,14 @@ label{font-weight:bold;}
 <script>
 let despesas=[],paradas=[];
 
+// Formata data para dia/mês/ano
 function formatarDataBR(data){
   if(!data) return "";
   const [y,m,d]=data.split("-");
   return `${d}/${m}/${y}`;
 }
 
+// Adiciona ponto de parada
 function addParada(){
   const div=document.createElement("div");
   div.innerHTML=`<input list="cidades" placeholder="Cidade de parada">`;
@@ -127,6 +130,7 @@ function addParada(){
   document.getElementById("paradas").appendChild(div);
 }
 
+// Controle de categorias
 function controleCategoria(){
   refeicao.classList.toggle("hidden",categoria.value!=="Alimentação");
   qtd.classList.toggle("hidden",categoria.value!=="Alimentação");
@@ -134,9 +138,10 @@ function controleCategoria(){
   carroProprioCampos.classList.toggle("hidden",categoria.value!=="Carro próprio");
   valorDespesa.readOnly=false;
   valorDespesa.value="";
-  kmPercorrido.value=""; valorCarro.value="";
+  valorCarro.value=""; obsCarro.value="";
 }
 
+// Controle refeições
 function controleRefeicao(){ calcularRefeicao(); }
 
 function calcularRefeicao(){
@@ -152,6 +157,7 @@ function calcularRefeicao(){
   }
 }
 
+// Adiciona despesa
 function addDespesa(){
   if(!categoria.value) return alert("Preencha a categoria");
 
@@ -159,12 +165,13 @@ function addDespesa(){
   let infoExtras="";
 
   if(categoria.value==="Carro próprio"){
-    if(!kmPercorrido.value || !valorCarro.value) return alert("Preencha km e valor do carro próprio");
+    if(!valorCarro.value) return alert("Preencha o valor do carro próprio");
     valor=parseFloat(valorCarro.value);
-    infoExtras=`Km percorrido: ${kmPercorrido.value}`;
+    infoExtras=obsCarro.value;
   } else {
     if(!valorDespesa.value) return alert("Preencha o valor da despesa");
     valor=parseFloat(valorDespesa.value);
+    infoExtras=outrosTexto.value;
   }
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
@@ -179,18 +186,18 @@ function addDespesa(){
       refeicao:refeicao.value,
       qtd:qtd.value,
       valor:valor,
-      outros:categoria.value==="Carro próprio"?infoExtras:outrosTexto.value,
+      outros:infoExtras,
       imagens:imgs
     });
 
     lista.innerHTML+=`
       <div class="despesa">
-        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valor} ${categoria.value==="Carro próprio"?infoExtras:(outrosTexto.value? "- "+outrosTexto.value:"")}
+        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valor} ${infoExtras ? "- "+infoExtras : ""}
       </div>
     `;
 
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
-    kmPercorrido.value=valorCarro.value="";
+    valorCarro.value=obsCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
@@ -201,6 +208,7 @@ function desenharBorda(pdf){
   pdf.rect(5,5,200,287);
 }
 
+// Finalizar viagem e gerar PDF
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
@@ -224,7 +232,7 @@ function finalizar(){
   });
   y+=4;
 
-  // Tabela de despesas
+  // Tabela despesas
   const startX=10;
   pdf.text("Despesas detalhadas:",startX,y); y+=5;
   const colWidths=[50,40,20,25,25];
@@ -286,7 +294,7 @@ function finalizar(){
     origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
     observacoes.value="";
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
-    kmPercorrido.value=valorCarro.value="";
+    valorCarro.value=obsCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
