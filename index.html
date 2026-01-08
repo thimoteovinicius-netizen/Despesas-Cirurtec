@@ -15,6 +15,7 @@ input,select,button{width:100%;padding:10px;margin-top:8px}
 button{background:#1976d2;color:#fff;border:none;border-radius:6px}
 .hidden{display:none}
 .despesa{border-top:1px solid #ddd;margin-top:8px;padding-top:8px}
+.btn-sec{background:#455a64}
 </style>
 </head>
 
@@ -57,14 +58,12 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px}
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
-  <!-- INPUT CORRIGIDO: CÂMERA + GALERIA -->
-  <input
-    type="file"
-    id="anexo"
-    accept="image/*"
-    capture="environment"
-    multiple
-  >
+  <!-- BOTÕES PROFISSIONAIS -->
+  <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
+  <input type="file" id="camera" accept="image/*" capture="environment" multiple hidden>
+
+  <button class="btn-sec" onclick="galeria.click()">🖼️ Escolher da galeria</button>
+  <input type="file" id="galeria" accept="image/*" multiple hidden>
 
   <button onclick="addDespesa()">Adicionar despesa</button>
 </div>
@@ -115,7 +114,10 @@ function addDespesa(){
     return;
   }
 
-  const arquivos=[...anexo.files].map(f=>new Promise(res=>{
+  const arquivos=[
+    ...camera.files,
+    ...galeria.files
+  ].map(f=>new Promise(res=>{
     const r=new FileReader();
     r.onload=e=>res(e.target.result);
     r.readAsDataURL(f);
@@ -137,7 +139,8 @@ function addDespesa(){
     `;
 
     categoria.value=refeicao.value=outrosTexto.value=valorDespesa.value="";
-    anexo.value="";
+    camera.value="";
+    galeria.value="";
     controleCategoria();
   });
 }
