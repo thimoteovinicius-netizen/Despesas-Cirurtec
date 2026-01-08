@@ -11,7 +11,7 @@
 body{font-family:Arial, sans-serif;background:#f4f4f4;padding:15px;}
 h1{text-align:center;}
 .card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;}
-input,select,button{width:100%;padding:10px;margin-top:8px;}
+input,select,button,textarea{width:100%;padding:10px;margin-top:8px;}
 button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
 .btn-sec{background:#455a64;margin-top:5px;}
 .hidden{display:none;}
@@ -19,6 +19,7 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
 table{border-collapse:collapse;width:100%;}
 th, td{border:1px solid #000;padding:5px;text-align:left;font-size:10px;}
 th{background:#eee;}
+label{font-weight:bold;}
 </style>
 </head>
 
@@ -41,7 +42,9 @@ th{background:#eee;}
 </div>
 
 <div class="card">
+  <label>Data início</label>
   <input type="date" id="dataInicio">
+  <label>Data final</label>
   <input type="date" id="dataFim">
   <input type="number" id="adiantamento" placeholder="Valor do adiantamento (R$)">
 </div>
@@ -75,11 +78,10 @@ th{background:#eee;}
   </select>
 
   <input type="number" id="qtd" class="hidden" min="1" max="6" placeholder="Quantidade (1 a 6)" onchange="calcularRefeicao()">
-
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
-  <!-- Botões de anexos -->
+  <!-- Botões de anexos para despesas -->
   <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
   <input type="file" id="camera" accept="image/*" capture="environment" multiple hidden>
 
@@ -87,6 +89,22 @@ th{background:#eee;}
   <input type="file" id="galeria" accept="image/*" multiple hidden>
 
   <button onclick="addDespesa()">Adicionar despesa</button>
+</div>
+
+<div class="card">
+  <input type="checkbox" id="veiculoProprio" onchange="toggleVeiculo()">
+  <label for="veiculoProprio">Veículo próprio</label>
+  <div id="veiculoCampos" class="hidden">
+    <button class="btn-sec" onclick="kmInicial.click()">📸 Foto KM Inicial</button>
+    <input type="file" id="kmInicial" accept="image/*" capture="environment" multiple hidden>
+    <button class="btn-sec" onclick="kmFinal.click()">📸 Foto KM Final</button>
+    <input type="file" id="kmFinal" accept="image/*" capture="environment" multiple hidden>
+  </div>
+</div>
+
+<div class="card">
+  <label>Observações (até 200 caracteres)</label>
+  <textarea id="observacoes" maxlength="200" placeholder="Digite suas observações aqui..."></textarea>
 </div>
 
 <div class="card">
@@ -99,9 +117,9 @@ th{background:#eee;}
 </div>
 
 <script>
-let despesas=[],paradas=[];
+let despesas=[],paradas=[],veiculoImgs={inicial:[],final:[]};
 
-// Funções auxiliares
+// Função auxiliar
 function formatarDataBR(data){
   if(!data) return "";
   const [y,m,d]=data.split("-");
@@ -162,7 +180,7 @@ function addDespesa(){
 
     lista.innerHTML+=`
       <div class="despesa">
-        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valorDespesa.value}
+        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valorDespesa.value} ${outrosTexto.value ? "- "+outrosTexto.value : ""}
       </div>
     `;
 
@@ -172,12 +190,17 @@ function addDespesa(){
   });
 }
 
+// Veículo próprio
+function toggleVeiculo(){
+  veiculoCampos.classList.toggle("hidden",!veiculoProprio.checked);
+}
+
 // Borda PDF
 function desenharBorda(pdf){
   pdf.rect(5,5,200,287);
 }
 
-// Gerar PDF completo com tabela
+// Finalizar e gerar PDF completo
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
@@ -208,20 +231,17 @@ function finalizar(){
   const colWidths=[50,40,20,25,25];
   const colTitles=["Categoria","Refeição","Qtd","Valor unitário","Total"];
   pdf.setFontSize(10);
-  // Cabeçalho tabela
   let x=startX;
-  colTitles.forEach((t,i)=>{pdf.rect(x,y, colWidths[i],7); pdf.text(t,x+1,y+5); x+=colWidths[i];});
+  colTitles.forEach((t,i)=>{pdf.rect(x,y,colWidths[i],7);pdf.text(t,x+1,y+5);x+=colWidths[i];});
   y+=7;
 
   despesas.forEach(d=>{
     total+=d.valor;
     porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
-
     let x=startX;
-    const valorUnit = d.refeicao==="Jantar"?40: (d.refeicao==="Almoço"?10: (d.refeicao==="Café da tarde"?10: (d.refeicao==="Café da manhã"?10:d.valor)));
+    const valorUnit = d.refeicao==="Jantar"?40:(d.refeicao==="Almoço"?10:(d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor)));
     const qtd=parseInt(d.qtd)||1;
     const totalItem=d.valor;
-
     [d.categoria,d.refeicao||"",qtd.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
       pdf.rect(x,y,colWidths[i],7);
       pdf.text(txt,x+1,y+5);
@@ -243,25 +263,46 @@ function finalizar(){
   const saldo=adiant-total;
   pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,startX,y);y+=6;
 
-  // Anexos
-  pdf.addPage();
-  desenharBorda(pdf);
-  y=15;
-  pdf.text("Anexos:",startX,y);y+=10;
-  despesas.forEach(d=>{
-    d.imagens.forEach(img=>{
-      if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
-      pdf.addImage(img,"JPEG",startX,y,80,60);
-      y+=70;
+  // Observações
+  if(observacoes.value) { y+=4; pdf.text(`Observações: ${observacoes.value}`,startX,y); y+=6; }
+
+  // Veículo próprio anexos
+  const veiculoArquivos=[...kmInicial.files,...kmFinal.files].map(f=>new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.readAsDataURL(f);
+  }));
+
+  Promise.all(veiculoArquivos).then(veiculoImgsArray=>{
+    // Anexos gerais
+    pdf.addPage();
+    desenharBorda(pdf);
+    y=15;
+    pdf.text("Anexos:",startX,y);y+=10;
+
+    // Despesas imagens
+    despesas.forEach(d=>{
+      d.imagens.forEach(img=>{
+        if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
+        pdf.addImage(img,"JPEG",startX,y,80,60);y+=70;
+      });
     });
+
+    // Veículo próprio imagens
+    veiculoImgsArray.forEach(img=>{
+      if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
+      pdf.addImage(img,"JPEG",startX,y,80,60);y+=70;
+    });
+
+    pdf.save("Despesas_Cirurtec.pdf");
+
+    // Limpar tudo
+    despesas=[]; lista.innerHTML="";
+    paradas=[]; document.getElementById("paradas").innerHTML="";
+    origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
+    veiculoProprio.checked=false; toggleVeiculo();
+    observacoes.value="";
   });
-
-  pdf.save("Despesas_Cirurtec.pdf");
-
-  // Limpar tudo
-  despesas=[]; lista.innerHTML="";
-  paradas=[]; document.getElementById("paradas").innerHTML="";
-  origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
 }
 </script>
 
