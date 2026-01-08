@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -8,43 +8,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f4f4;
-  padding: 15px;
-}
-h1 {
-  text-align: center;
-}
-.card {
-  background: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-}
-input, select, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-}
-button {
-  background: #1976d2;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-}
-.despesa {
-  border-top: 1px solid #ddd;
-  margin-top: 10px;
-  padding-top: 10px;
-}
-.hidden {
-  display: none;
-}
-img {
-  max-width: 100%;
-  margin-top: 5px;
-}
+body{font-family:Arial;background:#f4f4f4;padding:15px}
+h1{text-align:center}
+.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px}
+input,select,button{width:100%;padding:10px;margin-top:8px}
+button{background:#1976d2;color:#fff;border:none;border-radius:6px}
+.hidden{display:none}
+.despesa{border-top:1px solid #ddd;margin-top:8px;padding-top:8px}
 </style>
 </head>
 
@@ -53,26 +23,20 @@ img {
 <h1>Despesas Cirurtec</h1>
 
 <div class="card">
-  <h3>Identificação</h3>
-  <input type="text" id="nome" placeholder="Nome completo">
-  <input type="email" id="email" placeholder="E-mail">
+  <input id="nome" placeholder="Nome completo">
+  <input id="email" type="email" placeholder="E-mail">
 </div>
 
 <div class="card">
-  <label>Data início da viagem</label>
   <input type="date" id="dataInicio">
-
-  <label>Data fim da viagem</label>
   <input type="date" id="dataFim">
-
-  <label>Valor do adiantamento (R$)</label>
-  <input type="number" id="adiantamento" step="0.01">
+  <input type="number" id="adiantamento" placeholder="Adiantamento (R$)">
 </div>
 
 <div class="card">
   <h3>Nova despesa</h3>
 
-  <select id="categoria" onchange="verificaOutros()">
+  <select id="categoria" onchange="controleCategoria()">
     <option value="">Categoria</option>
     <option>Alimentação</option>
     <option>Combustível</option>
@@ -82,129 +46,106 @@ img {
     <option>Outros</option>
   </select>
 
-  <input type="text" id="outrosTexto" class="hidden" placeholder="Especifique">
+  <select id="refeicao" class="hidden" onchange="controleRefeicao()">
+    <option value="">Tipo de refeição</option>
+    <option value="Café da manhã">Café da manhã</option>
+    <option value="Almoço">Almoço</option>
+    <option value="Café da tarde">Café da tarde</option>
+    <option value="Jantar">Jantar</option>
+  </select>
 
-  <input type="number" id="valorDespesa" step="0.01" placeholder="Valor">
+  <input id="outrosTexto" class="hidden" placeholder="Especificar">
 
-  <label>Anexos (foto, galeria ou documento)</label>
+  <input type="number" id="valorDespesa" placeholder="Valor (R$)">
+
   <input type="file" id="anexo" accept="image/*,application/pdf" multiple>
 
-  <button onclick="adicionarDespesa()">Adicionar despesa</button>
+  <button onclick="addDespesa()">Adicionar despesa</button>
 </div>
 
 <div class="card">
-  <h3>Despesas lançadas</h3>
-  <div id="listaDespesas"></div>
+  <h3>Despesas</h3>
+  <div id="lista"></div>
 </div>
 
 <div class="card">
-  <button onclick="finalizarViagem()">Finalizar viagem e gerar PDF</button>
+  <button onclick="finalizar()">Finalizar viagem e gerar PDF</button>
 </div>
 
 <script>
-let despesas = [];
+let despesas=[];
 
-function verificaOutros() {
-  document.getElementById("outrosTexto")
-    .classList.toggle("hidden", categoria.value !== "Outros");
+function controleCategoria(){
+  refeicao.classList.toggle("hidden",categoria.value!=="Alimentação");
+  outrosTexto.classList.toggle("hidden",categoria.value!=="Outros");
+  valorDespesa.readOnly=false;
+  valorDespesa.value="";
 }
 
-function adicionarDespesa() {
-  if (!categoria.value || !valorDespesa.value) {
-    alert("Preencha categoria e valor");
-    return;
-  }
-
-  const arquivos = [];
-  const files = anexo.files;
-
-  if (files.length === 0) {
-    salvarDespesa([], []);
-    return;
-  }
-
-  let carregados = 0;
-  for (let f of files) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      arquivos.push({
-        nome: f.name,
-        tipo: f.type,
-        conteudo: e.target.result
-      });
-      carregados++;
-      if (carregados === files.length) salvarDespesa(arquivos);
-    };
-    reader.readAsDataURL(f);
+function controleRefeicao(){
+  const fixos={
+    "Almoço":40,
+    "Café da tarde":10,
+    "Jantar":40
+  };
+  if(fixos[refeicao.value]){
+    valorDespesa.value=fixos[refeicao.value];
+    valorDespesa.readOnly=true;
+  }else{
+    valorDespesa.readOnly=false;
+    valorDespesa.value="";
   }
 }
 
-function salvarDespesa(arquivos) {
+function addDespesa(){
+  if(!categoria.value||!valorDespesa.value)return alert("Preencha os dados");
+
   despesas.push({
-    categoria: categoria.value,
-    outros: outrosTexto.value,
-    valor: valorDespesa.value,
-    arquivos
+    categoria:categoria.value,
+    refeicao:refeicao.value,
+    outros:outrosTexto.value,
+    valor:parseFloat(valorDespesa.value)
   });
 
-  categoria.value = "";
-  outrosTexto.value = "";
-  valorDespesa.value = "";
-  anexo.value = "";
+  lista.innerHTML+=`<div class="despesa">${categoria.value} ${refeicao.value} – R$ ${valorDespesa.value}</div>`;
 
-  atualizarLista();
-  verificaOutros();
+  categoria.value="";refeicao.value="";outrosTexto.value="";valorDespesa.value="";
+  controleCategoria();
 }
 
-function atualizarLista() {
-  listaDespesas.innerHTML = "";
-  despesas.forEach((d, i) => {
-    listaDespesas.innerHTML += `
-      <div class="despesa">
-        ${i+1} - ${d.categoria} ${d.categoria==="Outros"?"("+d.outros+")":""} - R$ ${d.valor}
-      </div>`;
-  });
-}
+function finalizar(){
+  if(!confirm("Finalizar viagem?"))return;
 
-function finalizarViagem() {
-  if (!confirm("Finalizar viagem e gerar PDF?")) return;
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF();
+  let y=10,total=0;
+  let resumo={
+    "Café da manhã":[],
+    "Almoço":[],
+    "Café da tarde":[],
+    "Jantar":[]
+  };
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-  let y = 10;
-
-  pdf.text("Despesas Cirurtec", 10, y); y+=8;
-  pdf.text(`Nome: ${nome.value}`, 10, y); y+=8;
-  pdf.text(`Email: ${email.value}`, 10, y); y+=8;
-  pdf.text(`Período: ${dataInicio.value} a ${dataFim.value}`, 10, y); y+=8;
-  pdf.text(`Adiantamento: R$ ${adiantamento.value}`, 10, y); y+=10;
-
-  let total = 0;
-
-  despesas.forEach((d,i)=>{
-    pdf.text(`${i+1}. ${d.categoria} - R$ ${d.valor}`,10,y); y+=8;
-    total += parseFloat(d.valor);
-
-    d.arquivos.forEach(a=>{
-      if (a.tipo.startsWith("image/")) {
-        pdf.addImage(a.conteudo, "JPEG", 10, y, 60, 45);
-        y += 50;
-      } else {
-        pdf.text(`Anexo: ${a.nome}`, 10, y);
-        y += 6;
-      }
-    });
+  despesas.forEach(d=>{
+    total+=d.valor;
+    if(resumo[d.refeicao])resumo[d.refeicao].push(d.valor);
   });
 
-  y+=5;
-  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`,10,y); y+=8;
-  pdf.text(`Saldo: R$ ${(adiantamento.value-total).toFixed(2)}`,10,y);
+  pdf.text("Resumo de Alimentação",10,y);y+=8;
+  for(let r in resumo){
+    if(resumo[r].length){
+      const soma=resumo[r].reduce((a,b)=>a+b,0);
+      pdf.text(`${r}: ${resumo[r].length}x – Total R$ ${soma.toFixed(2)}`,10,y);
+      y+=6;
+    }
+  }
+
+  y+=8;
+  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`,10,y);
+  pdf.text(`Saldo: R$ ${(adiantamento.value-total).toFixed(2)}`,10,y+6);
 
   pdf.save("Despesas_Cirurtec.pdf");
-
-  despesas=[];
-  document.querySelectorAll("input").forEach(i=>i.value="");
-  atualizarLista();
+  despesas=[];lista.innerHTML="";
 }
 </script>
 
