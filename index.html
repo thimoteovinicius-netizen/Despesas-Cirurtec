@@ -67,8 +67,10 @@ label{font-weight:bold;}
     <option>Peças</option>
     <option>Hospedagem</option>
     <option>Outros</option>
+    <option>Carro próprio</option>
   </select>
 
+  <!-- Refeições -->
   <select id="refeicao" class="hidden" onchange="controleRefeicao()">
     <option value="">Tipo de refeição</option>
     <option>Café da manhã</option>
@@ -78,8 +80,18 @@ label{font-weight:bold;}
   </select>
 
   <input type="number" id="qtd" class="hidden" min="1" max="6" placeholder="Quantidade (1 a 6)" onchange="calcularRefeicao()">
+
+  <!-- Campo para outros -->
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
+
+  <!-- Campo para valor -->
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
+
+  <!-- Campos para Carro próprio -->
+  <div id="carroProprioCampos" class="hidden">
+    <input type="text" id="descCarro" placeholder="Descrição (ex: km, trajeto)">
+    <input type="number" id="valorCarro" placeholder="Valor (R$)">
+  </div>
 
   <!-- Botões de anexos para despesas -->
   <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
@@ -128,8 +140,11 @@ function controleCategoria(){
   refeicao.classList.toggle("hidden",categoria.value!=="Alimentação");
   qtd.classList.toggle("hidden",categoria.value!=="Alimentação");
   outrosTexto.classList.toggle("hidden",categoria.value!=="Outros");
-  valorDespesa.readOnly=false;
+  carroProprioCampos.classList.toggle("hidden",categoria.value!=="Carro próprio");
+  valorDespesa.classList.toggle("hidden",categoria.value==="Carro próprio");
   valorDespesa.value="";
+  descCarro.value="";
+  valorCarro.value="";
 }
 
 // Controle refeições
@@ -154,13 +169,17 @@ function addDespesa(){
 
   let valor=0;
   let infoExtras="";
-
-  if(categoria.value==="Outros"){
+  if(categoria.value==="Carro próprio"){
+    infoExtras = descCarro.value;
+    valor = parseFloat(valorCarro.value) || 0;
+    if(!infoExtras) return alert("Preencha a descrição do Carro próprio");
+  } else if(categoria.value==="Outros"){
     infoExtras=outrosTexto.value;
     if(!infoExtras) return alert("Preencha a descrição da despesa 'Outros'");
+    valor=parseFloat(valorDespesa.value)||0;
   } else {
-    if(!valorDespesa.value) return alert("Preencha o valor da despesa");
-    valor=parseFloat(valorDespesa.value);
+    valor=parseFloat(valorDespesa.value)||0;
+    infoExtras="";
   }
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
@@ -186,6 +205,7 @@ function addDespesa(){
     `;
 
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
+    descCarro.value=valorCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
@@ -282,6 +302,7 @@ function finalizar(){
     origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
     observacoes.value="";
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
+    descCarro.value=valorCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
