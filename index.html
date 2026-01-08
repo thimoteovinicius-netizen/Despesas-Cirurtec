@@ -5,94 +5,180 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Despesas Cirurtec</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{font-family:Arial;margin:0;background:#f1f5f9}
-header{background:#0f172a;color:#fff;padding:15px;text-align:center}
-main{padding:15px}
-input,button{width:100%;padding:10px;margin:5px 0}
-button{background:#2563eb;color:#fff;border:none;border-radius:5px}
-.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:10px}
-.danger{background:#dc2626}
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  padding: 15px;
+}
+h1 {
+  text-align: center;
+}
+.card {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+}
+button {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+}
+.despesa {
+  border-top: 1px solid #ddd;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.hidden {
+  display: none;
+}
 </style>
 </head>
 
 <body>
-<header>
-<img src="logo.png" style="max-height:50px"><br>
-Despesas Cirurtec
-</header>
 
-<main id="app"></main>
+<h1>Despesas Cirurtec</h1>
+
+<div class="card">
+  <label>Data início da viagem</label>
+  <input type="date" id="dataInicio">
+
+  <label>Data fim da viagem</label>
+  <input type="date" id="dataFim">
+
+  <label>Valor do adiantamento (R$)</label>
+  <input type="number" id="adiantamento" step="0.01">
+</div>
+
+<div class="card">
+  <h3>Nova despesa</h3>
+
+  <label>Categoria</label>
+  <select id="categoria" onchange="verificaOutros()">
+    <option value="">Selecione</option>
+    <option>Alimentação</option>
+    <option>Combustível</option>
+    <option>Pedágios</option>
+    <option>Peças</option>
+    <option>Hospedagem</option>
+    <option>Outros</option>
+  </select>
+
+  <input type="text" id="outrosTexto" class="hidden" placeholder="Especifique a despesa">
+
+  <label>Valor (R$)</label>
+  <input type="number" id="valorDespesa" step="0.01">
+
+  <label>Anexo (foto)</label>
+  <input type="file" id="anexo" accept="image/*" capture="environment">
+
+  <button onclick="adicionarDespesa()">Adicionar despesa</button>
+</div>
+
+<div class="card">
+  <h3>Despesas lançadas</h3>
+  <div id="listaDespesas"></div>
+</div>
+
+<div class="card">
+  <button onclick="finalizarViagem()">Finalizar viagem e gerar PDF</button>
+</div>
 
 <script>
-let viagem = JSON.parse(localStorage.getItem('viagem'));
+let despesas = [];
 
-function salvarViagem(){
-  const desc = document.getElementById('desc').value;
-  const adi = Number(document.getElementById('adi').value);
-  if(!desc || !adi){
-    alert('Preencha a descrição e o adiantamento');
-    return;
-  }
-  viagem = {desc,adi,despesas:[]};
-  localStorage.setItem('viagem',JSON.stringify(viagem));
-  render();
+function verificaOutros() {
+  const cat = document.getElementById("categoria").value;
+  document.getElementById("outrosTexto").classList.toggle("hidden", cat !== "Outros");
 }
 
-function addDespesa(){
-  const d = document.getElementById('d').value;
-  const v = Number(document.getElementById('v').value);
-  if(!d || !v) return;
-  viagem.despesas.push({d,v});
-  localStorage.setItem('viagem',JSON.stringify(viagem));
-  render();
-}
+function adicionarDespesa() {
+  const categoria = document.getElementById("categoria").value;
+  const outros = document.getElementById("outrosTexto").value;
+  const valor = document.getElementById("valorDespesa").value;
+  const anexoInput = document.getElementById("anexo");
 
-function finalizar(){
-  if(!confirm('Tem certeza que deseja finalizar esta viagem? Após isso os dados serão apagados.')) return;
-  localStorage.removeItem('viagem');
-  viagem=null;
-  alert('Viagem finalizada. (PDF será incluído na próxima etapa)');
-  render();
-}
-
-function render(){
-  const app=document.getElementById('app');
-  if(!viagem){
-    app.innerHTML=`
-    <div class="card">
-      <h3>Nova Viagem</h3>
-      <input id="desc" placeholder="Descrição da viagem">
-      <input id="adi" type="number" placeholder="Valor do adiantamento">
-      <button onclick="salvarViagem()">Iniciar Viagem</button>
-    </div>`;
+  if (!categoria || !valor) {
+    alert("Preencha categoria e valor.");
     return;
   }
 
-  let total=viagem.despesas.reduce((s,x)=>s+x.v,0);
-  app.innerHTML=`
-  <div class="card">
-    <b>${viagem.desc}</b><br>
-    Adiantamento: R$ ${viagem.adi.toFixed(2)}<br>
-    Total gasto: R$ ${total.toFixed(2)}<br>
-    Saldo: R$ ${(viagem.adi-total).toFixed(2)}
-  </div>
-
-  <div class="card">
-    <h3>Nova Despesa</h3>
-    <input id="d" placeholder="Descrição">
-    <input id="v" type="number" placeholder="Valor">
-    <button onclick="addDespesa()">Adicionar</button>
-  </div>
-
-  <button class="danger" onclick="finalizar()">Finalizar Viagem</button>
-  `;
+  let imagem = "";
+  if (anexoInput.files.length > 0) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      imagem = reader.result;
+      salvarDespesa(categoria, outros, valor, imagem);
+    };
+    reader.readAsDataURL(anexoInput.files[0]);
+  } else {
+    salvarDespesa(categoria, outros, valor, "");
+  }
 }
 
-render();
+function salvarDespesa(cat, outros, valor, img) {
+  despesas.push({ cat, outros, valor, img });
+  atualizarLista();
+
+  document.getElementById("categoria").value = "";
+  document.getElementById("outrosTexto").value = "";
+  document.getElementById("valorDespesa").value = "";
+  document.getElementById("anexo").value = "";
+  verificaOutros();
+}
+
+function atualizarLista() {
+  const lista = document.getElementById("listaDespesas");
+  lista.innerHTML = "";
+  despesas.forEach((d, i) => {
+    lista.innerHTML += `
+      <div class="despesa">
+        ${i + 1} - ${d.cat}${d.cat === "Outros" ? " (" + d.outros + ")" : ""} - R$ ${d.valor}
+      </div>`;
+  });
+}
+
+function finalizarViagem() {
+  if (!confirm("Deseja finalizar a viagem? Os dados serão apagados após gerar o PDF.")) return;
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+
+  let y = 10;
+  pdf.text("Despesas Cirurtec", 10, y); y += 10;
+  pdf.text(`Data início: ${dataInicio.value}`, 10, y); y += 8;
+  pdf.text(`Data fim: ${dataFim.value}`, 10, y); y += 8;
+  pdf.text(`Adiantamento: R$ ${adiantamento.value}`, 10, y); y += 10;
+
+  let total = 0;
+  despesas.forEach((d, i) => {
+    pdf.text(`${i + 1}. ${d.cat}${d.cat === "Outros" ? " (" + d.outros + ")" : ""} - R$ ${d.valor}`, 10, y);
+    y += 8;
+    total += parseFloat(d.valor);
+  });
+
+  y += 5;
+  const saldo = adiantamento.value - total;
+  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`, 10, y); y += 8;
+  pdf.text(`Saldo: R$ ${saldo.toFixed(2)}`, 10, y);
+
+  pdf.save("Despesas_Cirurtec.pdf");
+
+  // limpa tudo
+  despesas = [];
+  document.querySelectorAll("input").forEach(i => i.value = "");
+  atualizarLista();
+}
 </script>
+
 </body>
 </html>
