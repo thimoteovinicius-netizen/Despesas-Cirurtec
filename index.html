@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -41,12 +41,22 @@ button {
 .hidden {
   display: none;
 }
+img {
+  max-width: 100%;
+  margin-top: 5px;
+}
 </style>
 </head>
 
 <body>
 
 <h1>Despesas Cirurtec</h1>
+
+<div class="card">
+  <h3>Identificação</h3>
+  <input type="text" id="nome" placeholder="Nome completo">
+  <input type="email" id="email" placeholder="E-mail">
+</div>
 
 <div class="card">
   <label>Data início da viagem</label>
@@ -62,9 +72,8 @@ button {
 <div class="card">
   <h3>Nova despesa</h3>
 
-  <label>Categoria</label>
   <select id="categoria" onchange="verificaOutros()">
-    <option value="">Selecione</option>
+    <option value="">Categoria</option>
     <option>Alimentação</option>
     <option>Combustível</option>
     <option>Pedágios</option>
@@ -73,13 +82,12 @@ button {
     <option>Outros</option>
   </select>
 
-  <input type="text" id="outrosTexto" class="hidden" placeholder="Especifique a despesa">
+  <input type="text" id="outrosTexto" class="hidden" placeholder="Especifique">
 
-  <label>Valor (R$)</label>
-  <input type="number" id="valorDespesa" step="0.01">
+  <input type="number" id="valorDespesa" step="0.01" placeholder="Valor">
 
-  <label>Anexo (foto)</label>
-  <input type="file" id="anexo" accept="image/*" capture="environment">
+  <label>Anexos (foto, galeria ou documento)</label>
+  <input type="file" id="anexo" accept="image/*,application/pdf" multiple>
 
   <button onclick="adicionarDespesa()">Adicionar despesa</button>
 </div>
@@ -97,85 +105,105 @@ button {
 let despesas = [];
 
 function verificaOutros() {
-  const cat = document.getElementById("categoria").value;
-  document.getElementById("outrosTexto").classList.toggle("hidden", cat !== "Outros");
+  document.getElementById("outrosTexto")
+    .classList.toggle("hidden", categoria.value !== "Outros");
 }
 
 function adicionarDespesa() {
-  const categoria = document.getElementById("categoria").value;
-  const outros = document.getElementById("outrosTexto").value;
-  const valor = document.getElementById("valorDespesa").value;
-  const anexoInput = document.getElementById("anexo");
-
-  if (!categoria || !valor) {
-    alert("Preencha categoria e valor.");
+  if (!categoria.value || !valorDespesa.value) {
+    alert("Preencha categoria e valor");
     return;
   }
 
-  let imagem = "";
-  if (anexoInput.files.length > 0) {
+  const arquivos = [];
+  const files = anexo.files;
+
+  if (files.length === 0) {
+    salvarDespesa([], []);
+    return;
+  }
+
+  let carregados = 0;
+  for (let f of files) {
     const reader = new FileReader();
-    reader.onload = () => {
-      imagem = reader.result;
-      salvarDespesa(categoria, outros, valor, imagem);
+    reader.onload = e => {
+      arquivos.push({
+        nome: f.name,
+        tipo: f.type,
+        conteudo: e.target.result
+      });
+      carregados++;
+      if (carregados === files.length) salvarDespesa(arquivos);
     };
-    reader.readAsDataURL(anexoInput.files[0]);
-  } else {
-    salvarDespesa(categoria, outros, valor, "");
+    reader.readAsDataURL(f);
   }
 }
 
-function salvarDespesa(cat, outros, valor, img) {
-  despesas.push({ cat, outros, valor, img });
-  atualizarLista();
+function salvarDespesa(arquivos) {
+  despesas.push({
+    categoria: categoria.value,
+    outros: outrosTexto.value,
+    valor: valorDespesa.value,
+    arquivos
+  });
 
-  document.getElementById("categoria").value = "";
-  document.getElementById("outrosTexto").value = "";
-  document.getElementById("valorDespesa").value = "";
-  document.getElementById("anexo").value = "";
+  categoria.value = "";
+  outrosTexto.value = "";
+  valorDespesa.value = "";
+  anexo.value = "";
+
+  atualizarLista();
   verificaOutros();
 }
 
 function atualizarLista() {
-  const lista = document.getElementById("listaDespesas");
-  lista.innerHTML = "";
+  listaDespesas.innerHTML = "";
   despesas.forEach((d, i) => {
-    lista.innerHTML += `
+    listaDespesas.innerHTML += `
       <div class="despesa">
-        ${i + 1} - ${d.cat}${d.cat === "Outros" ? " (" + d.outros + ")" : ""} - R$ ${d.valor}
+        ${i+1} - ${d.categoria} ${d.categoria==="Outros"?"("+d.outros+")":""} - R$ ${d.valor}
       </div>`;
   });
 }
 
 function finalizarViagem() {
-  if (!confirm("Deseja finalizar a viagem? Os dados serão apagados após gerar o PDF.")) return;
+  if (!confirm("Finalizar viagem e gerar PDF?")) return;
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF();
-
   let y = 10;
-  pdf.text("Despesas Cirurtec", 10, y); y += 10;
-  pdf.text(`Data início: ${dataInicio.value}`, 10, y); y += 8;
-  pdf.text(`Data fim: ${dataFim.value}`, 10, y); y += 8;
-  pdf.text(`Adiantamento: R$ ${adiantamento.value}`, 10, y); y += 10;
+
+  pdf.text("Despesas Cirurtec", 10, y); y+=8;
+  pdf.text(`Nome: ${nome.value}`, 10, y); y+=8;
+  pdf.text(`Email: ${email.value}`, 10, y); y+=8;
+  pdf.text(`Período: ${dataInicio.value} a ${dataFim.value}`, 10, y); y+=8;
+  pdf.text(`Adiantamento: R$ ${adiantamento.value}`, 10, y); y+=10;
 
   let total = 0;
-  despesas.forEach((d, i) => {
-    pdf.text(`${i + 1}. ${d.cat}${d.cat === "Outros" ? " (" + d.outros + ")" : ""} - R$ ${d.valor}`, 10, y);
-    y += 8;
+
+  despesas.forEach((d,i)=>{
+    pdf.text(`${i+1}. ${d.categoria} - R$ ${d.valor}`,10,y); y+=8;
     total += parseFloat(d.valor);
+
+    d.arquivos.forEach(a=>{
+      if (a.tipo.startsWith("image/")) {
+        pdf.addImage(a.conteudo, "JPEG", 10, y, 60, 45);
+        y += 50;
+      } else {
+        pdf.text(`Anexo: ${a.nome}`, 10, y);
+        y += 6;
+      }
+    });
   });
 
-  y += 5;
-  const saldo = adiantamento.value - total;
-  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`, 10, y); y += 8;
-  pdf.text(`Saldo: R$ ${saldo.toFixed(2)}`, 10, y);
+  y+=5;
+  pdf.text(`Total despesas: R$ ${total.toFixed(2)}`,10,y); y+=8;
+  pdf.text(`Saldo: R$ ${(adiantamento.value-total).toFixed(2)}`,10,y);
 
   pdf.save("Despesas_Cirurtec.pdf");
 
-  // limpa tudo
-  despesas = [];
-  document.querySelectorAll("input").forEach(i => i.value = "");
+  despesas=[];
+  document.querySelectorAll("input").forEach(i=>i.value="");
   atualizarLista();
 }
 </script>
