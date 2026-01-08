@@ -41,8 +41,8 @@ th{background:#eee;}
 </div>
 
 <div class="card">
-  <input type="date" id="dataInicio">
-  <input type="date" id="dataFim">
+  <input type="date" id="dataInicio" placeholder="Data inicial">
+  <input type="date" id="dataFim" placeholder="Data final">
   <input type="number" id="adiantamento" placeholder="Valor do adiantamento (R$)">
 </div>
 
@@ -76,7 +76,9 @@ th{background:#eee;}
 
   <input type="number" id="qtd" class="hidden" min="1" max="6" placeholder="Quantidade (1 a 6)" onchange="calcularRefeicao()">
 
-  <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
+  <!-- Campo Outros fica em branco, sem label fixo -->
+  <input id="outrosTexto" class="hidden" placeholder="">
+
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
   <!-- Botões de anexos -->
@@ -182,8 +184,8 @@ function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
   const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-  let y=15;
+  const pdf=new jsPDF();
+  let y=10;
 
   const adiant=parseFloat(adiantamento.value)||0;
   let total=0;
@@ -193,13 +195,10 @@ function finalizar(){
   pdf.setFontSize(11);
 
   // Cabeçalho
-  pdf.text("Empresa: Cirurtec Hospitalar LTDA",10,y);y+=6;
-  pdf.text(`Técnico: ${nome.value}`,10,y);y+=6;
+  pdf.text("Despesas Cirurtec",10,y);y+=8;
+  pdf.text(`Nome: ${nome.value}`,10,y);y+=6;
+  pdf.text(`Email: ${email.value}`,10,y);y+=6;
   pdf.text(`Período: ${formatarDataBR(dataInicio.value)} a ${formatarDataBR(dataFim.value)}`,10,y);y+=6;
-  pdf.text(`Ponto inicial: ${origem.value}`,10,y);y+=6;
-  paradas.forEach((p,i)=>{
-    pdf.text(`Parada ${i+1}: ${p.querySelector("input").value}`,10,y);y+=6;
-  });
   y+=4;
 
   // Tabela de despesas
@@ -208,7 +207,6 @@ function finalizar(){
   const colWidths=[50,40,20,25,25];
   const colTitles=["Categoria","Refeição","Qtd","Valor unitário","Total"];
   pdf.setFontSize(10);
-  // Cabeçalho tabela
   let x=startX;
   colTitles.forEach((t,i)=>{pdf.rect(x,y, colWidths[i],7); pdf.text(t,x+1,y+5); x+=colWidths[i];});
   y+=7;
@@ -228,7 +226,7 @@ function finalizar(){
       x+=colWidths[i];
     });
     y+=7;
-    if(y>250){pdf.addPage();desenharBorda(pdf);y=15;}
+    if(y>250){pdf.addPage();desenharBorda(pdf);y=10;}
   });
 
   y+=4;
@@ -260,8 +258,6 @@ function finalizar(){
 
   // Limpar tudo
   despesas=[]; lista.innerHTML="";
-  paradas=[]; document.getElementById("paradas").innerHTML="";
-  origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
 }
 </script>
 
