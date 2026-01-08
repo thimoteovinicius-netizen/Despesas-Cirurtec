@@ -82,7 +82,7 @@ label{font-weight:bold;}
   <input type="number" id="qtd" class="hidden" min="1" max="6" placeholder="Quantidade (1 a 6)" onchange="calcularRefeicao()">
 
   <!-- Campo para outros -->
-  <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
+  <input id="outrosTexto" class="hidden" placeholder="Descrição da despesa">
 
   <!-- Campo de valor -->
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
@@ -90,10 +90,9 @@ label{font-weight:bold;}
   <!-- Campo para Carro próprio (apenas valor) -->
   <input type="number" id="valorCarro" class="hidden" placeholder="Valor (R$)">
 
-  <!-- Botões de anexos para despesas -->
+  <!-- Botões de anexos -->
   <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
   <input type="file" id="camera" accept="image/*" capture="environment" multiple hidden>
-
   <button class="btn-sec" onclick="galeria.click()">🖼️ Galeria</button>
   <input type="file" id="galeria" accept="image/*" multiple hidden>
 
@@ -159,6 +158,8 @@ function calcularRefeicao(){
   if(valores[refeicao.value] && qtd.value){
     valorDespesa.value = valores[refeicao.value]*qtd.value;
     valorDespesa.readOnly = true;
+  } else {
+    valorDespesa.readOnly=false;
   }
 }
 
@@ -171,11 +172,11 @@ function addDespesa(){
   if(categoria.value==="Carro próprio"){
     valor = parseFloat(valorCarro.value)||0;
   } else if(categoria.value==="Outros"){
-    infoExtras=outrosTexto.value;
+    infoExtras = outrosTexto.value;
     if(!infoExtras) return alert("Preencha a descrição da despesa 'Outros'");
-    valor=parseFloat(valorDespesa.value)||0;
+    valor = parseFloat(valorDespesa.value)||0;
   } else {
-    valor=parseFloat(valorDespesa.value)||0;
+    valor = parseFloat(valorDespesa.value)||0;
   }
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
@@ -252,12 +253,12 @@ function finalizar(){
     const valorUnit = d.refeicao==="Jantar"?40:(d.refeicao==="Almoço"?10:(d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor)));
     const qtdVal=parseInt(d.qtd)||1;
     const totalItem=d.valor;
-    [d.categoria,d.refeicao||"",qtdVal.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
+    const categoriaTexto=d.categoria==="Outros"?`Outros: ${d.outros}`:d.categoria;
+    [categoriaTexto,d.refeicao||"",qtdVal.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
       pdf.rect(x,y,colWidths[i],7);
       pdf.text(txt,x+1,y+5);
       x+=colWidths[i];
     });
-    if(d.outros) { pdf.text("Obs: "+d.outros,startX,y+5); }
     y+=7;
     if(y>250){pdf.addPage();desenharBorda(pdf);y=15;}
   });
@@ -276,30 +277,27 @@ function finalizar(){
 
   if(observacoes.value) { y+=4; pdf.text(`Observações: ${observacoes.value}`,startX,y); y+=6; }
 
-  // Anexos imagens
-  const anexos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
-    const r=new FileReader();
-    r.onload=e=>res(e.target.result);
-    r.readAsDataURL(f);
-  }));
-
-  Promise.all(anexos).then(imgs=>{
-    pdf.addPage(); desenharBorda(pdf); y=15; pdf.text("Anexos:",startX,y); y+=10;
-    imgs.forEach(img=>{
-      if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
-      pdf.addImage(img,"JPEG",startX,y,80,60); y+=70;
-    });
-    pdf.save("Despesas_Cirurtec.pdf");
-
-    // Limpar tudo
-    despesas=[]; lista.innerHTML="";
-    paradas=[]; document.getElementById("paradas").innerHTML="";
-    origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
-    observacoes.value="";
-    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value=valorCarro.value="";
-    camera.value=galeria.value="";
-    controleCategoria();
+  // Imagens anexadas
+  let imgY=y+10;
+  pdf.addPage(); desenharBorda(pdf); pdf.text("Anexos:",startX,15);
+  imgY=25;
+  let allImgs=[];
+  despesas.forEach(d=>{allImgs.push(...d.imagens);});
+  allImgs.forEach(img=>{
+    if(imgY>220){pdf.addPage(); desenharBorda(pdf); imgY=25;}
+    pdf.addImage(img,"JPEG",startX,imgY,80,60); imgY+=70;
   });
+
+  pdf.save("Despesas_Cirurtec.pdf");
+
+  // Limpar tudo
+  despesas=[]; lista.innerHTML="";
+  paradas=[]; document.getElementById("paradas").innerHTML="";
+  origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
+  observacoes.value="";
+  categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value=valorCarro.value="";
+  camera.value=galeria.value="";
+  controleCategoria();
 }
 </script>
 
