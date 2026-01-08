@@ -8,14 +8,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#f4f4f4;padding:15px}
-h1{text-align:center}
-.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px}
-input,select,button{width:100%;padding:10px;margin-top:8px}
-button{background:#1976d2;color:#fff;border:none;border-radius:6px}
-.hidden{display:none}
-.despesa{border-top:1px solid #ddd;margin-top:8px;padding-top:8px}
-.btn-sec{background:#455a64;margin-top:5px}
+body{font-family:Arial, sans-serif;background:#f4f4f4;padding:15px;}
+h1{text-align:center;}
+.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;}
+input,select,button{width:100%;padding:10px;margin-top:8px;}
+button{background:#1976d2;color:#fff;border:none;border-radius:6px;}
+.btn-sec{background:#455a64;margin-top:5px;}
+.hidden{display:none;}
+.despesa{border-top:1px solid #ddd;margin-top:8px;padding-top:8px;}
+table{border-collapse:collapse;width:100%;}
+th, td{border:1px solid #000;padding:5px;text-align:left;font-size:10px;}
+th{background:#eee;}
 </style>
 </head>
 
@@ -98,7 +101,7 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px}
 <script>
 let despesas=[],paradas=[];
 
-// Função auxiliar
+// Funções auxiliares
 function formatarDataBR(data){
   if(!data) return "";
   const [y,m,d]=data.split("-");
@@ -169,17 +172,17 @@ function addDespesa(){
   });
 }
 
-// Função para borda do PDF
+// Borda PDF
 function desenharBorda(pdf){
   pdf.rect(5,5,200,287);
 }
 
-// Finalizar e gerar PDF completo
+// Gerar PDF completo com tabela
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
   const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF();
+  const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
   let y=15;
 
   const adiant=parseFloat(adiantamento.value)||0;
@@ -190,67 +193,72 @@ function finalizar(){
   pdf.setFontSize(11);
 
   // Cabeçalho
-  pdf.text("Empresa: Cirurtec Hospitalar LTDA",10,y);y+=7;
-  pdf.text(`Técnico: ${nome.value}`,10,y);y+=7;
-  pdf.text(`Período: ${formatarDataBR(dataInicio.value)} a ${formatarDataBR(dataFim.value)}`,10,y);y+=7;
-  pdf.text(`Ponto inicial: ${origem.value}`,10,y);y+=7;
-
+  pdf.text("Empresa: Cirurtec Hospitalar LTDA",10,y);y+=6;
+  pdf.text(`Técnico: ${nome.value}`,10,y);y+=6;
+  pdf.text(`Período: ${formatarDataBR(dataInicio.value)} a ${formatarDataBR(dataFim.value)}`,10,y);y+=6;
+  pdf.text(`Ponto inicial: ${origem.value}`,10,y);y+=6;
   paradas.forEach((p,i)=>{
-    pdf.text(`Parada ${i+1}: ${p.querySelector("input").value}`,10,y);
-    y+=6;
+    pdf.text(`Parada ${i+1}: ${p.querySelector("input").value}`,10,y);y+=6;
   });
+  y+=4;
 
-  y+=5;
-  pdf.text("Resumo de despesas:",10,y);y+=7;
+  // Tabela de despesas
+  const startX=10;
+  pdf.text("Despesas detalhadas:",startX,y); y+=5;
+  const colWidths=[50,40,20,25,25];
+  const colTitles=["Categoria","Refeição","Qtd","Valor unitário","Total"];
+  pdf.setFontSize(10);
+  // Cabeçalho tabela
+  let x=startX;
+  colTitles.forEach((t,i)=>{pdf.rect(x,y, colWidths[i],7); pdf.text(t,x+1,y+5); x+=colWidths[i];});
+  y+=7;
 
-  despesas.forEach((d,i)=>{
+  despesas.forEach(d=>{
     total+=d.valor;
     porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
 
-    pdf.text(`${i+1}. ${d.categoria} ${d.refeicao ? "- "+d.refeicao : ""} ${d.qtd ? "(" + d.qtd + ")" : ""} – R$ ${d.valor.toFixed(2)}`,10,y);
-    y+=6;
+    let x=startX;
+    const valorUnit = d.refeicao==="Jantar"?40: (d.refeicao==="Almoço"?10: (d.refeicao==="Café da tarde"?10: (d.refeicao==="Café da manhã"?10:d.valor)));
+    const qtd=parseInt(d.qtd)||1;
+    const totalItem=d.valor;
 
-    if(y>250){
-      pdf.addPage();
-      desenharBorda(pdf);
-      y=15;
-    }
+    [d.categoria,d.refeicao||"",qtd.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
+      pdf.rect(x,y,colWidths[i],7);
+      pdf.text(txt,x+1,y+5);
+      x+=colWidths[i];
+    });
+    y+=7;
+    if(y>250){pdf.addPage();desenharBorda(pdf);y=15;}
   });
 
-  y+=5;
-  pdf.text("Resumo final:",10,y);y+=6;
-  pdf.text(`Valor adiantado: R$ ${adiant.toFixed(2)}`,10,y);y+=6;
-  pdf.text("Gastos por categoria:",10,y);y+=6;
-  for(let c in porCategoria){
-    pdf.text(`${c}: R$ ${porCategoria[c].toFixed(2)}`,10,y);y+=6;
-  }
-
   y+=4;
-  pdf.text(`Valor total gasto: R$ ${total.toFixed(2)}`,10,y);y+=6;
+  pdf.text("Resumo final:",startX,y);y+=6;
+  pdf.text(`Valor adiantado: R$ ${adiant.toFixed(2)}`,startX,y);y+=6;
+  pdf.text("Gastos por categoria:",startX,y);y+=6;
+  for(let c in porCategoria){
+    pdf.text(`${c}: R$ ${porCategoria[c].toFixed(2)}`,startX,y);y+=6;
+  }
+  y+=4;
+  pdf.text(`Valor total gasto: R$ ${total.toFixed(2)}`,startX,y);y+=6;
   const saldo=adiant-total;
-  pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,10,y);y+=6;
+  pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,startX,y);y+=6;
 
-  // Adiciona anexos no final
+  // Anexos
   pdf.addPage();
   desenharBorda(pdf);
   y=15;
-  pdf.text("Anexos:",10,y);y+=10;
-
+  pdf.text("Anexos:",startX,y);y+=10;
   despesas.forEach(d=>{
     d.imagens.forEach(img=>{
-      if(y>220){
-        pdf.addPage();
-        desenharBorda(pdf);
-        y=15;
-      }
-      pdf.addImage(img,"JPEG",10,y,80,60);
+      if(y>220){pdf.addPage();desenharBorda(pdf);y=15;}
+      pdf.addImage(img,"JPEG",startX,y,80,60);
       y+=70;
     });
   });
 
   pdf.save("Despesas_Cirurtec.pdf");
 
-  // Limpa dados para nova viagem
+  // Limpar tudo
   despesas=[]; lista.innerHTML="";
   paradas=[]; document.getElementById("paradas").innerHTML="";
   origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
