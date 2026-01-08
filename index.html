@@ -95,10 +95,15 @@ label{font-weight:bold;}
   <input type="checkbox" id="veiculoProprio" onchange="toggleVeiculo()">
   <label for="veiculoProprio">Veículo próprio</label>
   <div id="veiculoCampos" class="hidden">
-    <button class="btn-sec" onclick="kmInicial.click()">📸 Foto KM Inicial</button>
-    <input type="file" id="kmInicial" accept="image/*" capture="environment" multiple hidden>
-    <button class="btn-sec" onclick="kmFinal.click()">📸 Foto KM Final</button>
-    <input type="file" id="kmFinal" accept="image/*" capture="environment" multiple hidden>
+    <button class="btn-sec" onclick="kmInicialC.click()">📸 Foto KM Inicial (Câmera)</button>
+    <input type="file" id="kmInicialC" accept="image/*" capture="environment" multiple hidden>
+    <button class="btn-sec" onclick="kmInicialG.click()">🖼️ Foto KM Inicial (Galeria)</button>
+    <input type="file" id="kmInicialG" accept="image/*" multiple hidden>
+
+    <button class="btn-sec" onclick="kmFinalC.click()">📸 Foto KM Final (Câmera)</button>
+    <input type="file" id="kmFinalC" accept="image/*" capture="environment" multiple hidden>
+    <button class="btn-sec" onclick="kmFinalG.click()">🖼️ Foto KM Final (Galeria)</button>
+    <input type="file" id="kmFinalG" accept="image/*" multiple hidden>
   </div>
 </div>
 
@@ -117,7 +122,7 @@ label{font-weight:bold;}
 </div>
 
 <script>
-let despesas=[],paradas=[],veiculoImgs={inicial:[],final:[]};
+let despesas=[],paradas=[];
 
 // Função auxiliar
 function formatarDataBR(data){
@@ -247,6 +252,7 @@ function finalizar(){
       pdf.text(txt,x+1,y+5);
       x+=colWidths[i];
     });
+    if(d.outros) { pdf.text("Obs: "+d.outros,startX,y+5); } // Mostrar outros
     y+=7;
     if(y>250){pdf.addPage();desenharBorda(pdf);y=15;}
   });
@@ -263,11 +269,10 @@ function finalizar(){
   const saldo=adiant-total;
   pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,startX,y);y+=6;
 
-  // Observações
   if(observacoes.value) { y+=4; pdf.text(`Observações: ${observacoes.value}`,startX,y); y+=6; }
 
-  // Veículo próprio anexos
-  const veiculoArquivos=[...kmInicial.files,...kmFinal.files].map(f=>new Promise(res=>{
+  // Veículo próprio imagens
+  const veiculoArquivos=[...kmInicialC.files,...kmInicialG.files,...kmFinalC.files,...kmFinalG.files].map(f=>new Promise(res=>{
     const r=new FileReader();
     r.onload=e=>res(e.target.result);
     r.readAsDataURL(f);
