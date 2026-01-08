@@ -84,14 +84,11 @@ label{font-weight:bold;}
   <!-- Campo para outros -->
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
 
-  <!-- Campo para valor -->
+  <!-- Campo de valor -->
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
-  <!-- Campos para Carro próprio -->
-  <div id="carroProprioCampos" class="hidden">
-    <input type="text" id="descCarro" placeholder="Descrição (ex: km, trajeto)">
-    <input type="number" id="valorCarro" placeholder="Valor (R$)">
-  </div>
+  <!-- Campo para Carro próprio (apenas valor) -->
+  <input type="number" id="valorCarro" class="hidden" placeholder="Valor (R$)">
 
   <!-- Botões de anexos para despesas -->
   <button class="btn-sec" onclick="camera.click()">📸 Tirar foto</button>
@@ -140,11 +137,13 @@ function controleCategoria(){
   refeicao.classList.toggle("hidden",categoria.value!=="Alimentação");
   qtd.classList.toggle("hidden",categoria.value!=="Alimentação");
   outrosTexto.classList.toggle("hidden",categoria.value!=="Outros");
-  carroProprioCampos.classList.toggle("hidden",categoria.value!=="Carro próprio");
+  valorCarro.classList.toggle("hidden",categoria.value!=="Carro próprio");
   valorDespesa.classList.toggle("hidden",categoria.value==="Carro próprio");
   valorDespesa.value="";
-  descCarro.value="";
   valorCarro.value="";
+  outrosTexto.value="";
+  qtd.value="";
+  refeicao.value="";
 }
 
 // Controle refeições
@@ -170,16 +169,13 @@ function addDespesa(){
   let valor=0;
   let infoExtras="";
   if(categoria.value==="Carro próprio"){
-    infoExtras = descCarro.value;
-    valor = parseFloat(valorCarro.value) || 0;
-    if(!infoExtras) return alert("Preencha a descrição do Carro próprio");
+    valor = parseFloat(valorCarro.value)||0;
   } else if(categoria.value==="Outros"){
     infoExtras=outrosTexto.value;
     if(!infoExtras) return alert("Preencha a descrição da despesa 'Outros'");
     valor=parseFloat(valorDespesa.value)||0;
   } else {
     valor=parseFloat(valorDespesa.value)||0;
-    infoExtras="";
   }
 
   const arquivos=[...camera.files,...galeria.files].map(f=>new Promise(res=>{
@@ -204,8 +200,7 @@ function addDespesa(){
       </div>
     `;
 
-    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
-    descCarro.value=valorCarro.value="";
+    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value=valorCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
@@ -301,8 +296,7 @@ function finalizar(){
     paradas=[]; document.getElementById("paradas").innerHTML="";
     origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
     observacoes.value="";
-    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
-    descCarro.value=valorCarro.value="";
+    categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value=valorCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
