@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -23,7 +23,7 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px}
 <h1>Despesas Cirurtec</h1>
 
 <div class="card">
-  <input id="nome" placeholder="Nome completo do técnico">
+  <input id="nome" placeholder="Nome do técnico">
   <input id="email" type="email" placeholder="E-mail">
 </div>
 
@@ -71,143 +71,147 @@ button{background:#1976d2;color:#fff;border:none;border-radius:6px}
 </div>
 
 <script>
-let despesas = [];
+let despesas=[];
+
+function formatarDataBR(data){
+  if(!data) return "";
+  const [y,m,d] = data.split("-");
+  return `${d}/${m}/${y}`;
+}
 
 function controleCategoria(){
-  refeicao.classList.toggle("hidden", categoria.value !== "Alimentação");
-  outrosTexto.classList.toggle("hidden", categoria.value !== "Outros");
-  valorDespesa.readOnly = false;
-  valorDespesa.value = "";
+  refeicao.classList.toggle("hidden", categoria.value!=="Alimentação");
+  outrosTexto.classList.toggle("hidden", categoria.value!=="Outros");
+  valorDespesa.readOnly=false;
+  valorDespesa.value="";
 }
 
 function controleRefeicao(){
-  const fixos = {
-    "Almoço": 40,
-    "Café da tarde": 10,
-    "Jantar": 40
+  const fixos={
+    "Almoço":40,
+    "Café da tarde":10,
+    "Jantar":40
   };
   if(fixos[refeicao.value]){
-    valorDespesa.value = fixos[refeicao.value];
-    valorDespesa.readOnly = true;
-  } else {
-    valorDespesa.readOnly = false;
-    valorDespesa.value = "";
+    valorDespesa.value=fixos[refeicao.value];
+    valorDespesa.readOnly=true;
+  }else{
+    valorDespesa.readOnly=false;
+    valorDespesa.value="";
   }
 }
 
 function addDespesa(){
   if(!categoria.value || !valorDespesa.value){
-    alert("Preencha a categoria e o valor");
+    alert("Preencha os dados da despesa");
     return;
   }
 
-  const arquivos = [...anexo.files].map(f => new Promise(res=>{
-    const r = new FileReader();
-    r.onload = e => res(e.target.result);
+  const arquivos=[...anexo.files].map(f=>new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
     r.readAsDataURL(f);
   }));
 
   Promise.all(arquivos).then(imgs=>{
     despesas.push({
-      categoria: categoria.value,
-      refeicao: refeicao.value,
-      outros: outrosTexto.value,
-      valor: parseFloat(valorDespesa.value),
-      imagens: imgs
+      categoria:categoria.value,
+      refeicao:refeicao.value,
+      outros:outrosTexto.value,
+      valor:parseFloat(valorDespesa.value),
+      imagens:imgs
     });
 
-    lista.innerHTML += `
+    lista.innerHTML+=`
       <div class="despesa">
         ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} – R$ ${valorDespesa.value}
-      </div>
-    `;
+      </div>`;
 
-    categoria.value = refeicao.value = outrosTexto.value = valorDespesa.value = "";
-    anexo.value = "";
+    categoria.value=refeicao.value=outrosTexto.value=valorDespesa.value="";
+    anexo.value="";
     controleCategoria();
   });
+}
+
+function desenharBorda(pdf){
+  pdf.rect(5,5,200,287);
 }
 
 function finalizar(){
   if(!confirm("Finalizar viagem e gerar PDF?")) return;
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-  let y = 10;
-  let total = 0;
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF();
+  let y=15;
 
-  /* CABEÇALHO */
-  pdf.setFontSize(12);
-  pdf.text("Empresa: Cirurtec Hospitalar LTDA", 10, y); y+=7;
-  pdf.text(`Valor do adiantamento: R$ ${parseFloat(adiantamento.value).toFixed(2)}`, 10, y); y+=7;
-  pdf.text(`Nome do técnico: ${nome.value}`, 10, y); y+=7;
-  pdf.text(`Data início: ${dataInicio.value}`, 10, y); y+=7;
-  pdf.text(`Data fim: ${dataFim.value}`, 10, y); y+=10;
+  const adiant=parseFloat(adiantamento.value)||0;
+  let total=0;
+  let porCategoria={};
 
-  /* RESUMO DE GASTOS */
-  pdf.text("Resumo de Gastos", 10, y); y+=8;
+  desenharBorda(pdf);
+
+  pdf.setFontSize(11);
+  pdf.text("Empresa: Cirurtec Hospitalar LTDA",10,y);y+=7;
+  pdf.text(`Técnico: ${nome.value}`,10,y);y+=7;
+  pdf.text(`Período: ${formatarDataBR(dataInicio.value)} a ${formatarDataBR(dataFim.value)}`,10,y);y+=7;
+  pdf.text(`Valor adiantado: R$ ${adiant.toFixed(2)}`,10,y);y+=10;
+
+  pdf.text("Resumo de despesas",10,y);y+=8;
 
   despesas.forEach((d,i)=>{
-    total += d.valor;
-    pdf.text(
-      `${i+1}. ${d.categoria} ${d.refeicao ? "- "+d.refeicao : ""} – R$ ${d.valor.toFixed(2)}`,
-      10, y
-    );
+    total+=d.valor;
+    porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
+
+    pdf.text(`${i+1}. ${d.categoria} ${d.refeicao ? "- "+d.refeicao : ""} – R$ ${d.valor.toFixed(2)}`,10,y);
     y+=6;
-    if(y > 270){
+    if(y>270){
       pdf.addPage();
-      y = 10;
+      desenharBorda(pdf);
+      y=15;
     }
   });
+
+  /* RESUMO FINAL */
+  pdf.addPage();
+  desenharBorda(pdf);
+  y=15;
+
+  pdf.text("Resumo Final",10,y);y+=10;
+  pdf.text(`Valor adiantado: R$ ${adiant.toFixed(2)}`,10,y);y+=8;
+
+  pdf.text("Gastos por categoria:",10,y);y+=8;
+  for(let c in porCategoria){
+    pdf.text(`${c}: R$ ${porCategoria[c].toFixed(2)}`,10,y);
+    y+=6;
+  }
 
   y+=6;
-  pdf.text(`Total de despesas: R$ ${total.toFixed(2)}`, 10, y); y+=6;
-  pdf.text(`Saldo final: R$ ${(adiantamento.value - total).toFixed(2)}`, 10, y);
+  pdf.text(`Valor total gasto: R$ ${total.toFixed(2)}`,10,y);y+=8;
 
-  /* RESUMO DE ALIMENTAÇÃO */
-  pdf.addPage();
-  y = 10;
-  pdf.text("Resumo de Alimentação", 10, y); y+=8;
-
-  let resumo = {
-    "Café da manhã": [],
-    "Almoço": [],
-    "Café da tarde": [],
-    "Jantar": []
-  };
-
-  despesas.forEach(d=>{
-    if(resumo[d.refeicao]) resumo[d.refeicao].push(d.valor);
-  });
-
-  for(let r in resumo){
-    if(resumo[r].length){
-      const soma = resumo[r].reduce((a,b)=>a+b,0);
-      pdf.text(`${r}: ${resumo[r].length}x – Total R$ ${soma.toFixed(2)}`, 10, y);
-      y+=6;
-    }
-  }
+  const saldo=adiant-total;
+  pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":""}`,10,y);
 
   /* ANEXOS */
   pdf.addPage();
-  y = 10;
-  pdf.text("Anexos", 10, y); y+=10;
+  desenharBorda(pdf);
+  y=15;
+  pdf.text("Anexos",10,y);y+=10;
 
   despesas.forEach(d=>{
     d.imagens.forEach(img=>{
-      if(y > 230){
+      if(y>220){
         pdf.addPage();
-        y = 10;
+        desenharBorda(pdf);
+        y=15;
       }
-      pdf.addImage(img, "JPEG", 10, y, 80, 60);
-      y += 70;
+      pdf.addImage(img,"JPEG",10,y,80,60);
+      y+=70;
     });
   });
 
   pdf.save("Despesas_Cirurtec.pdf");
-
-  despesas = [];
-  lista.innerHTML = "";
+  despesas=[];
+  lista.innerHTML="";
 }
 </script>
 
