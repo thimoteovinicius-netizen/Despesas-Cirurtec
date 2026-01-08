@@ -15,7 +15,7 @@ main{padding:15px}
 input,button{width:100%;padding:10px;margin:5px 0}
 button{background:#2563eb;color:#fff;border:none;border-radius:5px}
 .card{background:#fff;padding:15px;border-radius:8px;margin-bottom:10px}
-.total{font-weight:bold;margin-top:10px}
+.danger{background:#dc2626}
 </style>
 </head>
 
@@ -25,55 +25,71 @@ button{background:#2563eb;color:#fff;border:none;border-radius:5px}
 Despesas Cirurtec
 </header>
 
-<main>
-
-<div class="card">
-<h3>Nova Viagem</h3>
-<input id="viagem" placeholder="Descrição da viagem">
-<input id="adiantamento" type="number" placeholder="Valor do adiantamento">
-<button onclick="novaViagem()">Salvar</button>
-</div>
-
-<div id="viagens"></div>
-
-</main>
+<main id="app"></main>
 
 <script>
-let dados = JSON.parse(localStorage.getItem('dados') || '[]');
+let viagem = JSON.parse(localStorage.getItem('viagem'));
 
-function novaViagem(){
- dados.push({
-   desc:viagem.value,
-   adiantamento:Number(adiantamento.value),
-   despesas:[]
- });
- localStorage.setItem('dados',JSON.stringify(dados));
- render();
+function salvarViagem(){
+  const desc = document.getElementById('desc').value;
+  const adi = Number(document.getElementById('adi').value);
+  if(!desc || !adi){
+    alert('Preencha a descrição e o adiantamento');
+    return;
+  }
+  viagem = {desc,adi,despesas:[]};
+  localStorage.setItem('viagem',JSON.stringify(viagem));
+  render();
+}
+
+function addDespesa(){
+  const d = document.getElementById('d').value;
+  const v = Number(document.getElementById('v').value);
+  if(!d || !v) return;
+  viagem.despesas.push({d,v});
+  localStorage.setItem('viagem',JSON.stringify(viagem));
+  render();
+}
+
+function finalizar(){
+  if(!confirm('Tem certeza que deseja finalizar esta viagem? Após isso os dados serão apagados.')) return;
+  localStorage.removeItem('viagem');
+  viagem=null;
+  alert('Viagem finalizada. (PDF será incluído na próxima etapa)');
+  render();
 }
 
 function render(){
- viagens.innerHTML='';
- dados.forEach((v,i)=>{
-   let total=v.despesas.reduce((s,d)=>s+d.valor,0);
-   viagens.innerHTML+=`
-   <div class='card'>
-   <b>${v.desc}</b><br>
-   Adiantamento: R$ ${v.adiantamento.toFixed(2)}<br>
-   Total gasto: R$ ${total.toFixed(2)}<br>
-   Saldo: R$ ${(v.adiantamento-total).toFixed(2)}<br><br>
-   <input placeholder='Despesa' id='d${i}'>
-   <input type='number' placeholder='Valor' id='v${i}'>
-   <button onclick='addDespesa(${i})'>Adicionar despesa</button>
-   </div>`;
- });
-}
+  const app=document.getElementById('app');
+  if(!viagem){
+    app.innerHTML=`
+    <div class="card">
+      <h3>Nova Viagem</h3>
+      <input id="desc" placeholder="Descrição da viagem">
+      <input id="adi" type="number" placeholder="Valor do adiantamento">
+      <button onclick="salvarViagem()">Iniciar Viagem</button>
+    </div>`;
+    return;
+  }
 
-function addDespesa(i){
- let d=document.getElementById('d'+i).value;
- let v=Number(document.getElementById('v'+i).value);
- dados[i].despesas.push({desc:d,valor:v});
- localStorage.setItem('dados',JSON.stringify(dados));
- render();
+  let total=viagem.despesas.reduce((s,x)=>s+x.v,0);
+  app.innerHTML=`
+  <div class="card">
+    <b>${viagem.desc}</b><br>
+    Adiantamento: R$ ${viagem.adi.toFixed(2)}<br>
+    Total gasto: R$ ${total.toFixed(2)}<br>
+    Saldo: R$ ${(viagem.adi-total).toFixed(2)}
+  </div>
+
+  <div class="card">
+    <h3>Nova Despesa</h3>
+    <input id="d" placeholder="Descrição">
+    <input id="v" type="number" placeholder="Valor">
+    <button onclick="addDespesa()">Adicionar</button>
+  </div>
+
+  <button class="danger" onclick="finalizar()">Finalizar Viagem</button>
+  `;
 }
 
 render();
