@@ -82,9 +82,8 @@ label{font-weight:bold;}
   <input id="outrosTexto" class="hidden" placeholder="Especificar despesa">
   <input type="number" id="valorDespesa" placeholder="Valor (R$)">
 
-  <!-- Campos para Carro próprio -->
+  <!-- Campo texto para Carro próprio -->
   <div id="carroProprioCampos" class="hidden">
-    <input type="number" id="valorCarro" placeholder="Valor total (R$)">
     <input type="text" id="obsCarro" placeholder="Observação (ex: km, trajeto)">
   </div>
 
@@ -138,7 +137,7 @@ function controleCategoria(){
   carroProprioCampos.classList.toggle("hidden",categoria.value!=="Carro próprio");
   valorDespesa.readOnly=false;
   valorDespesa.value="";
-  valorCarro.value=""; obsCarro.value="";
+  obsCarro.value="";
 }
 
 // Controle refeições
@@ -165,8 +164,6 @@ function addDespesa(){
   let infoExtras="";
 
   if(categoria.value==="Carro próprio"){
-    if(!valorCarro.value) return alert("Preencha o valor do carro próprio");
-    valor=parseFloat(valorCarro.value);
     infoExtras=obsCarro.value;
   } else {
     if(!valorDespesa.value) return alert("Preencha o valor da despesa");
@@ -192,12 +189,12 @@ function addDespesa(){
 
     lista.innerHTML+=`
       <div class="despesa">
-        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} – R$ ${valor} ${infoExtras ? "- "+infoExtras : ""}
+        ${categoria.value} ${refeicao.value ? "- "+refeicao.value : ""} ${qtd.value ? "("+qtd.value+")" : ""} ${valor? "– R$ "+valor : ""} ${infoExtras ? "- "+infoExtras : ""}
       </div>
     `;
 
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
-    valorCarro.value=obsCarro.value="";
+    obsCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
@@ -243,12 +240,12 @@ function finalizar(){
   y+=7;
 
   despesas.forEach(d=>{
-    total+=d.valor;
-    porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor;
+    if(d.categoria!=="Carro próprio") total+=d.valor;
+    porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+(d.valor||0);
     let x=startX;
-    const valorUnit = d.refeicao==="Jantar"?40:(d.refeicao==="Almoço"?10:(d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor)));
+    const valorUnit = d.refeicao==="Jantar"?40:(d.refeicao==="Almoço"?10:(d.refeicao==="Café da tarde"?10:(d.refeicao==="Café da manhã"?10:d.valor||0)));
     const qtdVal=parseInt(d.qtd)||1;
-    const totalItem=d.valor;
+    const totalItem=d.valor||0;
     [d.categoria,d.refeicao||"",qtdVal.toString(),`R$ ${valorUnit.toFixed(2)}`,`R$ ${totalItem.toFixed(2)}`].forEach((txt,i)=>{
       pdf.rect(x,y,colWidths[i],7);
       pdf.text(txt,x+1,y+5);
@@ -294,7 +291,7 @@ function finalizar(){
     origem.value=""; dataInicio.value=""; dataFim.value=""; adiantamento.value="";
     observacoes.value="";
     categoria.value=refeicao.value=qtd.value=valorDespesa.value=outrosTexto.value="";
-    valorCarro.value=obsCarro.value="";
+    obsCarro.value="";
     camera.value=galeria.value="";
     controleCategoria();
   });
