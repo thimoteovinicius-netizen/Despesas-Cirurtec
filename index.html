@@ -25,11 +25,14 @@ body{
   margin-bottom:20px;
 }
 .header img{
-  max-width:140px;
+  max-width:160px;
+  margin-bottom:6px;
+  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.15));
 }
 .header h1{
-  font-size:20px;
-  margin-top:8px;
+  font-size:18px;
+  font-weight:600;
+  color:#1976d2;
 }
 
 /* CARD */
@@ -129,7 +132,7 @@ h3{
 <body>
 
 <div class="header">
-  <img src="1000644584.png">
+  <img src="1000644584.png" alt="Logo Cirurtec">
   <h1>Despesas Cirurtec</h1>
 </div>
 
@@ -224,7 +227,6 @@ h3{
 
 let despesas=[], anexos=[];
 
-/* DATA */
 function formatarDataHora(dt){
   if(!dt) return "";
   const [data, hora] = dt.split("T");
@@ -232,14 +234,12 @@ function formatarDataHora(dt){
   return `${d}/${m}/${y} ${hora}`;
 }
 
-/* PARADAS */
 function addParada(){
   const d=document.createElement("div");
   d.innerHTML=`<input list="cidades-mg" placeholder="Cidade de parada">`;
   paradas.appendChild(d);
 }
 
-/* CATEGORIA */
 function controleCategoria(){
   sub.classList.add("hidden");
   qtd.classList.add("hidden");
@@ -267,7 +267,6 @@ function controleCategoria(){
   }
 }
 
-/* CALCULAR */
 function calcularValor(){
   const q=Number(qtd.value)||0;
 
@@ -281,7 +280,6 @@ function calcularValor(){
   if(categoria.value==="Veículo próprio"&&q) valor.value=(1.28*q).toFixed(2);
 }
 
-/* ADD DESPESA */
 function addDespesa(){
   if(!categoria.value||!valor.value) return alert("Preencha os dados");
 
@@ -298,7 +296,6 @@ function addDespesa(){
   controleCategoria();
 }
 
-/* RENDER */
 function renderDespesas(){
   lista.innerHTML="";
   despesas.forEach((d,i)=>{
@@ -311,7 +308,6 @@ function renderDespesas(){
   });
 }
 
-/* REMOVER */
 function removerDespesa(i){
   if(confirm("Excluir despesa?")){
     despesas.splice(i,1);
@@ -319,7 +315,6 @@ function removerDespesa(i){
   }
 }
 
-/* EDITAR */
 function editarDespesa(i){
   const d=despesas[i];
 
@@ -334,7 +329,6 @@ function editarDespesa(i){
   renderDespesas();
 }
 
-/* ANEXOS */
 function processarArquivos(input){
   [...input.files].forEach(f=>{
     const r=new FileReader();
@@ -361,7 +355,6 @@ function renderAnexos(){
   });
 }
 
-/* PDF COMPLETO */
 function finalizar(){
 
   const ad = Number(adiantamento.value)||0;
