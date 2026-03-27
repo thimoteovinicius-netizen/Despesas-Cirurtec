@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 
@@ -19,20 +20,10 @@ body{
   color:#2c3e50;
 }
 
-/* HEADER */
-.header{
-  text-align:center;
-  margin-bottom:20px;
-}
-.header img{
-  max-width:140px;
-}
-.header h1{
-  font-size:20px;
-  margin-top:8px;
-}
+.header{text-align:center;margin-bottom:20px;}
+.header img{max-width:140px;}
+.header h1{font-size:20px;margin-top:8px;}
 
-/* CARD */
 .card{
   background:#fff;
   padding:18px;
@@ -42,7 +33,6 @@ body{
   border:1px solid #eef1f5;
 }
 
-/* INPUTS */
 input,select,textarea{
   width:100%;
   padding:12px;
@@ -50,8 +40,6 @@ input,select,textarea{
   border-radius:12px;
   border:1px solid #e0e4ea;
   background:#fafbfc;
-  font-size:14px;
-  transition:0.2s;
 }
 
 input:focus,select:focus,textarea:focus{
@@ -61,7 +49,6 @@ input:focus,select:focus,textarea:focus{
   box-shadow:0 0 0 2px rgba(25,118,210,0.1);
 }
 
-/* BUTTON */
 button{
   width:100%;
   padding:12px;
@@ -69,37 +56,12 @@ button{
   border:none;
   border-radius:14px;
   font-weight:500;
-  cursor:pointer;
-  transition:0.2s;
 }
 
-.btn-primary{
-  background:#1976d2;
-  color:#fff;
-}
+.btn-primary{background:#1976d2;color:#fff;}
+.btn-sec{background:#e3f2fd;color:#1976d2;}
+.btn-del{background:#fdecea;color:#c62828;}
 
-.btn-sec{
-  background:#e3f2fd;
-  color:#1976d2;
-}
-
-.btn-del{
-  background:#fdecea;
-  color:#c62828;
-}
-
-button:hover{
-  transform:translateY(-1px);
-  opacity:0.95;
-}
-
-/* TITLES */
-h3{
-  margin-bottom:5px;
-  font-size:16px;
-}
-
-/* DESPESAS */
 .despesa{
   background:#f9fafb;
   border-radius:12px;
@@ -108,7 +70,6 @@ h3{
   border:1px solid #eef1f5;
 }
 
-/* ANEXO */
 .anexo{
   background:#f9fafb;
   border-radius:12px;
@@ -116,11 +77,8 @@ h3{
   margin-top:10px;
   border:1px solid #e0e0e0;
 }
-.anexo img{
-  border-radius:10px;
-}
+.anexo img{border-radius:10px;}
 
-/* HIDDEN */
 .hidden{display:none;}
 
 </style>
@@ -136,9 +94,6 @@ h3{
 <datalist id="cidades-mg">
   <option value="Belo Horizonte - MG">
   <option value="Uberlândia - MG">
-  <option value="Uberaba - MG">
-  <option value="Juiz de Fora - MG">
-  <option value="Divinópolis - MG">
 </datalist>
 
 <div class="card">
@@ -149,19 +104,17 @@ h3{
 <div class="card">
   <label>Data início</label>
   <input type="datetime-local" id="dataInicio">
-
   <label>Data final</label>
   <input type="datetime-local" id="dataFim">
-
-  <input type="number" id="adiantamento" placeholder="Adiantamento (R$)">
+  <input type="number" id="adiantamento" placeholder="Adiantamento">
 </div>
 
 <div class="card">
   <h3>Trajeto</h3>
-  <input list="cidades-mg" id="origem" placeholder="Origem">
-  <button class="btn-sec" onclick="addParada()">+ Adicionar parada</button>
+  <input id="origem" placeholder="Origem">
+  <button class="btn-sec" onclick="addParada()">+ Parada</button>
   <div id="paradas"></div>
-  <input list="cidades-mg" id="destino" placeholder="Destino">
+  <input id="destino" placeholder="Destino">
 </div>
 
 <div class="card">
@@ -188,10 +141,9 @@ h3{
 
   <input type="number" id="qtd" class="hidden" min="1" placeholder="Quantidade" oninput="calcularValor()">
   <input id="outros" class="hidden" placeholder="Descrição">
+  <input id="valor" type="number" placeholder="Valor" readonly>
 
-  <input id="valor" type="number" placeholder="Valor (R$)" readonly>
-
-  <button class="btn-primary" onclick="addDespesa()">Adicionar despesa</button>
+  <button class="btn-primary" onclick="addDespesa()">Adicionar</button>
 </div>
 
 <div class="card">
@@ -200,8 +152,12 @@ h3{
 </div>
 
 <div class="card">
-  <h3>Anexos</h3>
+  <h3>Resumo de gastos</h3>
+  <canvas id="grafico"></canvas>
+</div>
 
+<div class="card">
+  <h3>Anexos</h3>
   <button class="btn-sec" onclick="camera.click()">📸 Câmera</button>
   <input id="camera" type="file" accept="image/*" capture="environment" multiple hidden>
 
@@ -213,33 +169,52 @@ h3{
 
 <div class="card">
   <h3>Observações</h3>
-  <textarea id="observacoes" maxlength="500"></textarea>
+  <textarea id="observacoes"></textarea>
 </div>
 
 <div class="card">
-  <button class="btn-primary" onclick="finalizar()">Finalizar e gerar PDF</button>
+  <button class="btn-primary" onclick="finalizar()">Gerar PDF</button>
 </div>
 
 <script>
 
-let despesas=[], anexos=[];
-
-/* DATA */
-function formatarDataHora(dt){
-  if(!dt) return "";
-  const [data, hora] = dt.split("T");
-  const [y,m,d] = data.split("-");
-  return `${d}/${m}/${y} ${hora}`;
+/* ===== AUTO SAVE ===== */
+function salvarDados(){
+  localStorage.setItem("dados",JSON.stringify({
+    nome:nome.value,email:email.value,dataInicio:dataInicio.value,dataFim:dataFim.value,
+    adiantamento:adiantamento.value,origem:origem.value,destino:destino.value,
+    despesas,anexos,observacoes:observacoes.value
+  }));
 }
 
-/* PARADAS */
+function carregarDados(){
+  const d=JSON.parse(localStorage.getItem("dados"));
+  if(!d) return;
+
+  nome.value=d.nome||""; email.value=d.email||"";
+  dataInicio.value=d.dataInicio||""; dataFim.value=d.dataFim||"";
+  adiantamento.value=d.adiantamento||"";
+  origem.value=d.origem||""; destino.value=d.destino||"";
+  despesas=d.despesas||[]; anexos=d.anexos||[];
+  observacoes.value=d.observacoes||"";
+
+  renderDespesas();
+  renderAnexos();
+  atualizarGrafico();
+}
+
+setInterval(salvarDados,3000);
+window.onload=carregarDados;
+
+/* ===== LÓGICA ORIGINAL ===== */
+let despesas=[], anexos=[];
+
 function addParada(){
   const d=document.createElement("div");
-  d.innerHTML=`<input list="cidades-mg" placeholder="Cidade de parada">`;
+  d.innerHTML=`<input placeholder="Parada">`;
   paradas.appendChild(d);
 }
 
-/* CATEGORIA */
 function controleCategoria(){
   sub.classList.add("hidden");
   qtd.classList.add("hidden");
@@ -267,7 +242,6 @@ function controleCategoria(){
   }
 }
 
-/* CALCULAR */
 function calcularValor(){
   const q=Number(qtd.value)||0;
 
@@ -277,11 +251,9 @@ function calcularValor(){
   }
 
   if(categoria.value==="Bônus de viagem"&&q) valor.value=25*q;
-
   if(categoria.value==="Veículo próprio"&&q) valor.value=(1.28*q).toFixed(2);
 }
 
-/* ADD DESPESA */
 function addDespesa(){
   if(!categoria.value||!valor.value) return alert("Preencha os dados");
 
@@ -293,48 +265,46 @@ function addDespesa(){
   });
 
   renderDespesas();
-
-  categoria.value=sub.value=qtd.value=outros.value=valor.value="";
-  controleCategoria();
+  atualizarGrafico();
 }
 
-/* RENDER */
 function renderDespesas(){
   lista.innerHTML="";
   despesas.forEach((d,i)=>{
     lista.innerHTML+=`
       <div class="despesa">
-        ${d.categoria} – R$ ${d.valorTotal.toFixed(2)}
-        <button class="btn-sec" onclick="editarDespesa(${i})">Editar</button>
-        <button class="btn-del" onclick="removerDespesa(${i})">Excluir</button>
+        ${d.categoria} - R$ ${d.valorTotal.toFixed(2)}
+        <button class="btn-sec" onclick="removerDespesa(${i})">Remover</button>
       </div>`;
   });
 }
 
-/* REMOVER */
 function removerDespesa(i){
-  if(confirm("Excluir despesa?")){
-    despesas.splice(i,1);
-    renderDespesas();
-  }
-}
-
-/* EDITAR */
-function editarDespesa(i){
-  const d=despesas[i];
-
-  categoria.value=d.categoria;
-  controleCategoria();
-
-  if(d.detalhe) sub.value=d.detalhe;
-  qtd.value=d.quantidade;
-  valor.value=d.valorTotal;
-
   despesas.splice(i,1);
   renderDespesas();
+  atualizarGrafico();
 }
 
-/* ANEXOS */
+/* ===== GRÁFICO ===== */
+let grafico;
+
+function atualizarGrafico(){
+  const resumo={};
+  despesas.forEach(d=>{
+    if(!resumo[d.categoria]) resumo[d.categoria]=0;
+    resumo[d.categoria]+=d.valorTotal;
+  });
+
+  if(grafico) grafico.destroy();
+
+  grafico=new Chart(grafico=document.getElementById("grafico"),{
+    type:"doughnut",
+    data:{labels:Object.keys(resumo),datasets:[{data:Object.values(resumo)}]},
+    options:{plugins:{legend:{position:"bottom"}}}
+  });
+}
+
+/* ===== ANEXOS ===== */
 function processarArquivos(input){
   [...input.files].forEach(f=>{
     const r=new FileReader();
@@ -351,113 +321,36 @@ galeria.onchange=()=>processarArquivos(galeria);
 
 function renderAnexos(){
   listaAnexos.innerHTML="";
-  anexos.forEach((a,i)=>{
-    listaAnexos.innerHTML+=`
-      <div class="anexo">
-        <img src="${a.img}" width="100%">
-        <textarea placeholder="Descrição"
-          oninput="anexos[${i}].desc=this.value"></textarea>
-      </div>`;
+  anexos.forEach(a=>{
+    listaAnexos.innerHTML+=`<div class="anexo"><img src="${a.img}" width="100%"></div>`;
   });
 }
 
-/* PDF COMPLETO */
+/* ===== PDF ===== */
 function finalizar(){
-
-  const ad = Number(adiantamento.value)||0;
 
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF();
 
-  let y=10,total=0;
+  let y=30,total=0;
 
-  pdf.setFontSize(12);
-  pdf.text("Cirurtec Hospitalar LTDA",10,y); y+=8;
+  pdf.setFillColor(25,118,210);
+  pdf.rect(0,0,210,20,"F");
 
-  pdf.setFontSize(10);
-  pdf.text(`Técnico: ${nome.value}`,10,y); y+=5;
-  pdf.text(`E-mail: ${email.value}`,10,y); y+=5;
-  pdf.text(`Data início: ${formatarDataHora(dataInicio.value)}`,10,y); y+=5;
-  pdf.text(`Data final: ${formatarDataHora(dataFim.value)}`,10,y); y+=8;
+  pdf.setTextColor(255,255,255);
+  pdf.text("Relatório de Despesas",10,13);
 
-  pdf.text("Trajeto",10,y); y+=5;
-  pdf.text(`Origem: ${origem.value}`,10,y); y+=5;
+  pdf.setTextColor(0,0,0);
 
-  [...paradas.children].forEach((p,i)=>{
-    const cidade=p.querySelector("input").value;
-    if(cidade){
-      pdf.text(`Parada ${i+1}: ${cidade}`,10,y);
-      y+=5;
-    }
-  });
+  despesas.forEach(d=>total+=d.valorTotal);
 
-  pdf.text(`Destino: ${destino.value}`,10,y); y+=8;
+  pdf.text(`Técnico: ${nome.value}`,10,y); y+=6;
+  pdf.text(`Total: R$ ${total.toFixed(2)}`,10,y);
 
-  const porCategoria={};
-
-  despesas.forEach(d=>{
-    if(!porCategoria[d.categoria]) porCategoria[d.categoria]=[];
-    porCategoria[d.categoria].push(d);
-    total+=d.valorTotal;
-  });
-
-  pdf.text("Despesas",10,y); y+=6;
-
-  for(const cat in porCategoria){
-    pdf.setFont(undefined,"bold");
-    pdf.text(cat,10,y); y+=5;
-
-    pdf.setFont(undefined,"normal");
-
-    porCategoria[cat].forEach(d=>{
-      pdf.text(`${d.detalhe||"-"} | Qtd: ${d.quantidade} | R$ ${d.valorTotal.toFixed(2)}`,12,y);
-      y+=5;
-
-      if(y>270){
-        pdf.addPage();
-        y=10;
-      }
-    });
-
-    y+=3;
-  }
-
-  pdf.text(`Adiantamento: R$ ${ad.toFixed(2)}`,10,y); y+=5;
-  pdf.text(`Total gasto: R$ ${total.toFixed(2)}`,10,y); y+=5;
-
-  const saldo=ad-total;
-
-  pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":"(RESTANTE)"}`,10,y);
-
-  if(observacoes.value){
-    y+=8;
-    pdf.text("Observações:",10,y); y+=5;
-    pdf.text(observacoes.value,10,y,{maxWidth:190});
-  }
-
-  if(anexos.length){
-    pdf.addPage(); y=10;
-
-    anexos.forEach(a=>{
-      if(y>220){
-        pdf.addPage();
-        y=10;
-      }
-
-      pdf.addImage(a.img,"JPEG",10,y,80,60);
-
-      if(a.desc){
-        pdf.text(a.desc,10,y+65);
-      }
-
-      y+=75;
-    });
-  }
-
-  pdf.save("Despesas_Cirurtec.pdf");
+  pdf.save("despesas.pdf");
 }
 
 </script>
 
 </body>
-</html>
+  </html>
