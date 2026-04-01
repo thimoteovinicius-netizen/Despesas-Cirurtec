@@ -145,7 +145,15 @@ button{
 </div>
 
 <script>
+
 let despesas=[], anexos=[];
+
+function formatarDataHora(dt){
+  if(!dt) return "";
+  const [data, hora] = dt.split("T");
+  const [y,m,d] = data.split("-");
+  return `${d}/${m}/${y} ${hora}`;
+}
 
 function addParada(){
   paradas.innerHTML+=`<input placeholder="Cidade parada">`;
@@ -166,7 +174,7 @@ function controleCategoria(){
 
   if(["Bônus de viagem","Veículo próprio"].includes(categoria.value)){
     qtd.classList.remove("hidden");
-    valor.readOnly=true;
+    calcularValor();
   }
 
   if(categoria.value==="Outros"){
@@ -184,7 +192,7 @@ function calcularValor(){
 
   if(categoria.value==="Alimentação"){
     const t={Almoço:10,"Café da tarde":10,Jantar:40};
-    valor.value=t[sub.value]*q||"";
+    if(t[sub.value]&&q) valor.value=t[sub.value]*q;
   }
 
   if(categoria.value==="Bônus de viagem") valor.value=25*q;
@@ -192,33 +200,41 @@ function calcularValor(){
 }
 
 function addDespesa(){
-  if(!categoria.value||!valor.value) return alert("Preencha");
+  if(!categoria.value||!valor.value) return alert("Preencha os dados");
 
   despesas.push({
     categoria:categoria.value,
-    detalhe:sub.value||outros.value,
+    detalhe:sub.value||outros.value||"",
     quantidade:Number(qtd.value)||1,
     valorTotal:Number(valor.value)
   });
 
   renderDespesas();
+
   categoria.value=sub.value=qtd.value=outros.value=valor.value="";
+  controleCategoria();
 }
 
 function renderDespesas(){
   lista.innerHTML="";
   despesas.forEach((d,i)=>{
     lista.innerHTML+=`
-    <div class="despesa">
-      ${d.categoria} - R$ ${d.valorTotal.toFixed(2)}
-      <button onclick="editar(${i})">Editar</button>
-      <button class="btn-del" onclick="remover(${i})">Excluir</button>
-    </div>`;
+      <div class="despesa">
+        ${d.categoria} – R$ ${d.valorTotal.toFixed(2)}
+        <button onclick="editarDespesa(${i})">Editar</button>
+        <button class="btn-del" onclick="removerDespesa(${i})">Excluir</button>
+      </div>`;
   });
 }
 
-function editar(i){
+function removerDespesa(i){
+  despesas.splice(i,1);
+  renderDespesas();
+}
+
+function editarDespesa(i){
   const d=despesas[i];
+
   categoria.value=d.categoria;
   controleCategoria();
 
@@ -232,12 +248,7 @@ function editar(i){
   renderDespesas();
 }
 
-function remover(i){
-  despesas.splice(i,1);
-  renderDespesas();
-}
-
-function processar(input){
+function processarArquivos(input){
   [...input.files].forEach(f=>{
     const r=new FileReader();
     r.onload=e=>{
@@ -248,43 +259,97 @@ function processar(input){
   });
 }
 
-camera.onchange=()=>processar(camera);
-galeria.onchange=()=>processar(galeria);
+camera.onchange=()=>processarArquivos(camera);
+galeria.onchange=()=>processarArquivos(galeria);
 
 function removerAnexo(i){
-  anexos.splice(i,1);
-  renderAnexos();
+  if(confirm("Excluir anexo?")){
+    anexos.splice(i,1);
+    renderAnexos();
+  }
 }
 
 function renderAnexos(){
   listaAnexos.innerHTML="";
   anexos.forEach((a,i)=>{
     listaAnexos.innerHTML+=`
-    <div class="anexo">
-      <img src="${a.img}" width="100%">
-      <textarea placeholder="Descrição" oninput="anexos[${i}].desc=this.value"></textarea>
-      <button class="btn-del" onclick="removerAnexo(${i})">Excluir</button>
-    </div>`;
+      <div class="anexo">
+        <img src="${a.img}" width="100%">
+        <textarea placeholder="Descrição"
+          oninput="anexos[${i}].desc=this.value"></textarea>
+        <button class="btn-del" onclick="removerAnexo(${i})">Excluir</button>
+      </div>`;
   });
 }
 
 function finalizar(){
+
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF();
 
   let y=10,total=0;
+  const ad = Number(adiantamento.value)||0;
 
-  pdf.text("Relatório de Despesas",10,y); y+=10;
+  pdf.setFontSize(14);
+  pdf.text("Cirurtec Hospitalar LTDA",10,y); y+=8;
+
+  pdf.setFontSize(10);
+  pdf.text(`Técnico: ${nome.value}`,10,y); y+=5;
+  pdf.text(`E-mail: ${email.value}`,10,y); y+=5;
+  pdf.text(`Data início: ${formatarDataHora(dataInicio.value)}`,10,y); y+=5;
+  pdf.text(`Data final: ${formatarDataHora(dataFim.value)}`,10,y); y+=8;
+
+  pdf.text("Trajeto",10,y); y+=5;
+  pdf.text(`Origem: ${origem.value}`,10,y); y+=5;
+
+  [...paradas.children].forEach((p,i)=>{
+    const cidade=p.querySelector("input").value;
+    if(cidade){
+      pdf.text(`Parada ${i+1}: ${cidade}`,10,y);
+      y+=5;
+    }
+  });
+
+  pdf.text(`Destino: ${destino.value}`,10,y); y+=8;
+
+  const porCategoria={};
 
   despesas.forEach(d=>{
-    pdf.text(`${d.categoria} - R$ ${d.valorTotal}`,10,y);
-    y+=6;
+    if(!porCategoria[d.categoria]) porCategoria[d.categoria]=[];
+    porCategoria[d.categoria].push(d);
     total+=d.valorTotal;
   });
 
-  pdf.text(`Total: R$ ${total}`,10,y);
+  pdf.text("Despesas",10,y); y+=6;
 
-  /* ANEXOS CORRIGIDOS */
+  for(const cat in porCategoria){
+    pdf.text(cat,10,y); y+=5;
+
+    porCategoria[cat].forEach(d=>{
+      pdf.text(`${d.detalhe||"-"} | Qtd: ${d.quantidade} | R$ ${d.valorTotal.toFixed(2)}`,12,y);
+      y+=5;
+
+      if(y>270){
+        pdf.addPage();
+        y=10;
+      }
+    });
+
+    y+=3;
+  }
+
+  pdf.text(`Adiantamento: R$ ${ad.toFixed(2)}`,10,y); y+=5;
+  pdf.text(`Total gasto: R$ ${total.toFixed(2)}`,10,y); y+=5;
+
+  const saldo=ad-total;
+  pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":"(RESTANTE)"}`,10,y);
+
+  if(observacoes.value){
+    pdf.addPage();
+    pdf.text("Observações:",10,10);
+    pdf.text(observacoes.value,10,20,{maxWidth:190});
+  }
+
   if(anexos.length){
     pdf.addPage();
     y=10;
@@ -312,8 +377,9 @@ function finalizar(){
     });
   }
 
-  pdf.save("Despesas.pdf");
+  pdf.save("Despesas_Cirurtec.pdf");
 }
+
 </script>
 
 </body>
