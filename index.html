@@ -7,11 +7,9 @@
 <title>Despesas Cirurtec</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
 body{
   font-family:'Inter',sans-serif;
   background:#f6f8fb;
@@ -19,130 +17,56 @@ body{
   color:#2c3e50;
 }
 
-/* HEADER */
-.header{
-  text-align:center;
-  margin-bottom:20px;
-}
-.header img{
-  max-width:160px;
-  margin-bottom:6px;
-  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.15));
-}
-.header h1{
-  font-size:18px;
-  font-weight:600;
-  color:#1976d2;
-}
+.header{text-align:center;margin-bottom:20px;}
+.header img{max-width:160px;margin-bottom:6px;}
+.header h1{font-size:18px;color:#1976d2;}
 
-/* CARD */
 .card{
   background:#fff;
   padding:18px;
   border-radius:18px;
   margin-bottom:15px;
   box-shadow:0 6px 16px rgba(0,0,0,0.06);
-  border:1px solid #eef1f5;
 }
 
-/* INPUTS */
 input,select,textarea{
   width:100%;
   padding:12px;
   margin-top:8px;
   border-radius:12px;
   border:1px solid #e0e4ea;
-  background:#fafbfc;
-  font-size:14px;
-  transition:0.2s;
 }
 
-input:focus,select:focus,textarea:focus{
-  outline:none;
-  border-color:#1976d2;
-  background:#fff;
-  box-shadow:0 0 0 2px rgba(25,118,210,0.1);
-}
-
-/* BUTTON */
 button{
   width:100%;
   padding:12px;
   margin-top:10px;
   border:none;
   border-radius:14px;
-  font-weight:500;
   cursor:pointer;
-  transition:0.2s;
 }
 
-.btn-primary{
-  background:#1976d2;
-  color:#fff;
-}
+.btn-primary{background:#1976d2;color:#fff;}
+.btn-sec{background:#e3f2fd;color:#1976d2;}
+.btn-del{background:#fdecea;color:#c62828;}
 
-.btn-sec{
-  background:#e3f2fd;
-  color:#1976d2;
-}
-
-.btn-del{
-  background:#fdecea;
-  color:#c62828;
-}
-
-button:hover{
-  transform:translateY(-1px);
-  opacity:0.95;
-}
-
-/* TITLES */
-h3{
-  margin-bottom:5px;
-  font-size:16px;
-}
-
-/* DESPESAS */
-.despesa{
-  background:#f9fafb;
-  border-radius:12px;
-  padding:10px;
-  margin-top:10px;
-  border:1px solid #eef1f5;
-}
-
-/* ANEXO */
-.anexo{
-  background:#f9fafb;
-  border-radius:12px;
-  padding:10px;
-  margin-top:10px;
-  border:1px solid #e0e0e0;
-}
-.anexo img{
-  border-radius:10px;
-}
-
-/* HIDDEN */
 .hidden{display:none;}
 
+.despesa,.anexo{
+  background:#f9fafb;
+  border-radius:12px;
+  padding:10px;
+  margin-top:10px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <img src="1000644584.png" alt="Logo Cirurtec">
+  <img src="1000644584.png">
   <h1>Despesas Cirurtec</h1>
 </div>
-
-<datalist id="cidades-mg">
-  <option value="Belo Horizonte - MG">
-  <option value="Uberlândia - MG">
-  <option value="Uberaba - MG">
-  <option value="Juiz de Fora - MG">
-  <option value="Divinópolis - MG">
-</datalist>
 
 <div class="card">
   <input id="nome" placeholder="Nome do técnico">
@@ -152,19 +76,17 @@ h3{
 <div class="card">
   <label>Data início</label>
   <input type="datetime-local" id="dataInicio">
-
   <label>Data final</label>
   <input type="datetime-local" id="dataFim">
-
   <input type="number" id="adiantamento" placeholder="Adiantamento (R$)">
 </div>
 
 <div class="card">
   <h3>Trajeto</h3>
-  <input list="cidades-mg" id="origem" placeholder="Origem">
-  <button class="btn-sec" onclick="addParada()">+ Adicionar parada</button>
+  <input id="origem" placeholder="Origem">
+  <button class="btn-sec" onclick="addParada()">+ Parada</button>
   <div id="paradas"></div>
-  <input list="cidades-mg" id="destino" placeholder="Destino">
+  <input id="destino" placeholder="Destino">
 </div>
 
 <div class="card">
@@ -189,12 +111,12 @@ h3{
     <option>Jantar</option>
   </select>
 
-  <input type="number" id="qtd" class="hidden" min="1" placeholder="Quantidade" oninput="calcularValor()">
+  <input type="number" id="qtd" class="hidden" placeholder="Quantidade" oninput="calcularValor()">
   <input id="outros" class="hidden" placeholder="Descrição">
 
   <input id="valor" type="number" placeholder="Valor (R$)" readonly>
 
-  <button class="btn-primary" onclick="addDespesa()">Adicionar despesa</button>
+  <button class="btn-primary" onclick="addDespesa()">Adicionar</button>
 </div>
 
 <div class="card">
@@ -215,35 +137,25 @@ h3{
 </div>
 
 <div class="card">
-  <h3>Observações</h3>
-  <textarea id="observacoes" maxlength="500"></textarea>
+  <textarea id="observacoes" placeholder="Observações"></textarea>
 </div>
 
 <div class="card">
-  <button class="btn-primary" onclick="finalizar()">Finalizar e gerar PDF</button>
+  <button class="btn-primary" onclick="finalizar()">Gerar PDF</button>
 </div>
 
 <script>
-
 let despesas=[], anexos=[];
 
-function formatarDataHora(dt){
-  if(!dt) return "";
-  const [data, hora] = dt.split("T");
-  const [y,m,d] = data.split("-");
-  return `${d}/${m}/${y} ${hora}`;
-}
-
 function addParada(){
-  const d=document.createElement("div");
-  d.innerHTML=`<input list="cidades-mg" placeholder="Cidade de parada">`;
-  paradas.appendChild(d);
+  paradas.innerHTML+=`<input placeholder="Cidade parada">`;
 }
 
 function controleCategoria(){
   sub.classList.add("hidden");
   qtd.classList.add("hidden");
   outros.classList.add("hidden");
+
   valor.value="";
   valor.readOnly=true;
 
@@ -254,7 +166,7 @@ function controleCategoria(){
 
   if(["Bônus de viagem","Veículo próprio"].includes(categoria.value)){
     qtd.classList.remove("hidden");
-    calcularValor();
+    valor.readOnly=true;
   }
 
   if(categoria.value==="Outros"){
@@ -272,56 +184,47 @@ function calcularValor(){
 
   if(categoria.value==="Alimentação"){
     const t={Almoço:10,"Café da tarde":10,Jantar:40};
-    if(t[sub.value]&&q) valor.value=t[sub.value]*q;
+    valor.value=t[sub.value]*q||"";
   }
 
-  if(categoria.value==="Bônus de viagem"&&q) valor.value=25*q;
-
-  if(categoria.value==="Veículo próprio"&&q) valor.value=(1.28*q).toFixed(2);
+  if(categoria.value==="Bônus de viagem") valor.value=25*q;
+  if(categoria.value==="Veículo próprio") valor.value=(1.28*q).toFixed(2);
 }
 
 function addDespesa(){
-  if(!categoria.value||!valor.value) return alert("Preencha os dados");
+  if(!categoria.value||!valor.value) return alert("Preencha");
 
   despesas.push({
     categoria:categoria.value,
-    detalhe:sub.value||outros.value||"",
+    detalhe:sub.value||outros.value,
     quantidade:Number(qtd.value)||1,
     valorTotal:Number(valor.value)
   });
 
   renderDespesas();
-
   categoria.value=sub.value=qtd.value=outros.value=valor.value="";
-  controleCategoria();
 }
 
 function renderDespesas(){
   lista.innerHTML="";
   despesas.forEach((d,i)=>{
     lista.innerHTML+=`
-      <div class="despesa">
-        ${d.categoria} – R$ ${d.valorTotal.toFixed(2)}
-        <button class="btn-sec" onclick="editarDespesa(${i})">Editar</button>
-        <button class="btn-del" onclick="removerDespesa(${i})">Excluir</button>
-      </div>`;
+    <div class="despesa">
+      ${d.categoria} - R$ ${d.valorTotal.toFixed(2)}
+      <button onclick="editar(${i})">Editar</button>
+      <button class="btn-del" onclick="remover(${i})">Excluir</button>
+    </div>`;
   });
 }
 
-function removerDespesa(i){
-  if(confirm("Excluir despesa?")){
-    despesas.splice(i,1);
-    renderDespesas();
-  }
-}
-
-function editarDespesa(i){
+function editar(i){
   const d=despesas[i];
-
   categoria.value=d.categoria;
   controleCategoria();
 
-  if(d.detalhe) sub.value=d.detalhe;
+  if(d.categoria==="Outros") outros.value=d.detalhe;
+  else sub.value=d.detalhe;
+
   qtd.value=d.quantidade;
   valor.value=d.valorTotal;
 
@@ -329,7 +232,12 @@ function editarDespesa(i){
   renderDespesas();
 }
 
-function processarArquivos(input){
+function remover(i){
+  despesas.splice(i,1);
+  renderDespesas();
+}
+
+function processar(input){
   [...input.files].forEach(f=>{
     const r=new FileReader();
     r.onload=e=>{
@@ -340,117 +248,73 @@ function processarArquivos(input){
   });
 }
 
-camera.onchange=()=>processarArquivos(camera);
-galeria.onchange=()=>processarArquivos(galeria);
+camera.onchange=()=>processar(camera);
+galeria.onchange=()=>processar(galeria);
+
+function removerAnexo(i){
+  anexos.splice(i,1);
+  renderAnexos();
+}
 
 function renderAnexos(){
   listaAnexos.innerHTML="";
   anexos.forEach((a,i)=>{
     listaAnexos.innerHTML+=`
-      <div class="anexo">
-        <img src="${a.img}" width="100%">
-        <textarea placeholder="Descrição"
-          oninput="anexos[${i}].desc=this.value"></textarea>
-      </div>`;
+    <div class="anexo">
+      <img src="${a.img}" width="100%">
+      <textarea placeholder="Descrição" oninput="anexos[${i}].desc=this.value"></textarea>
+      <button class="btn-del" onclick="removerAnexo(${i})">Excluir</button>
+    </div>`;
   });
 }
 
 function finalizar(){
-
-  const ad = Number(adiantamento.value)||0;
-
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF();
 
   let y=10,total=0;
 
-  pdf.setFontSize(12);
-  pdf.text("Cirurtec Hospitalar LTDA",10,y); y+=8;
-
-  pdf.setFontSize(10);
-  pdf.text(`Técnico: ${nome.value}`,10,y); y+=5;
-  pdf.text(`E-mail: ${email.value}`,10,y); y+=5;
-  pdf.text(`Data início: ${formatarDataHora(dataInicio.value)}`,10,y); y+=5;
-  pdf.text(`Data final: ${formatarDataHora(dataFim.value)}`,10,y); y+=8;
-
-  pdf.text("Trajeto",10,y); y+=5;
-  pdf.text(`Origem: ${origem.value}`,10,y); y+=5;
-
-  [...paradas.children].forEach((p,i)=>{
-    const cidade=p.querySelector("input").value;
-    if(cidade){
-      pdf.text(`Parada ${i+1}: ${cidade}`,10,y);
-      y+=5;
-    }
-  });
-
-  pdf.text(`Destino: ${destino.value}`,10,y); y+=8;
-
-  const porCategoria={};
+  pdf.text("Relatório de Despesas",10,y); y+=10;
 
   despesas.forEach(d=>{
-    if(!porCategoria[d.categoria]) porCategoria[d.categoria]=[];
-    porCategoria[d.categoria].push(d);
+    pdf.text(`${d.categoria} - R$ ${d.valorTotal}`,10,y);
+    y+=6;
     total+=d.valorTotal;
   });
 
-  pdf.text("Despesas",10,y); y+=6;
+  pdf.text(`Total: R$ ${total}`,10,y);
 
-  for(const cat in porCategoria){
-    pdf.setFont(undefined,"bold");
-    pdf.text(cat,10,y); y+=5;
-
-    pdf.setFont(undefined,"normal");
-
-    porCategoria[cat].forEach(d=>{
-      pdf.text(`${d.detalhe||"-"} | Qtd: ${d.quantidade} | R$ ${d.valorTotal.toFixed(2)}`,12,y);
-      y+=5;
-
-      if(y>270){
-        pdf.addPage();
-        y=10;
-      }
-    });
-
-    y+=3;
-  }
-
-  pdf.text(`Adiantamento: R$ ${ad.toFixed(2)}`,10,y); y+=5;
-  pdf.text(`Total gasto: R$ ${total.toFixed(2)}`,10,y); y+=5;
-
-  const saldo=ad-total;
-
-  pdf.text(`Saldo final: R$ ${saldo.toFixed(2)} ${saldo<0?"(NEGATIVO)":"(RESTANTE)"}`,10,y);
-
-  if(observacoes.value){
-    y+=8;
-    pdf.text("Observações:",10,y); y+=5;
-    pdf.text(observacoes.value,10,y,{maxWidth:190});
-  }
-
+  /* ANEXOS CORRIGIDOS */
   if(anexos.length){
-    pdf.addPage(); y=10;
+    pdf.addPage();
+    y=10;
 
     anexos.forEach(a=>{
-      if(y>220){
+      const img=new Image();
+      img.src=a.img;
+
+      const largura=180;
+      const altura=largura/(img.width/img.height);
+
+      if(y+altura>280){
         pdf.addPage();
         y=10;
       }
 
-      pdf.addImage(a.img,"JPEG",10,y,80,60);
+      pdf.addImage(a.img,"JPEG",15,y,largura,altura);
 
       if(a.desc){
-        pdf.text(a.desc,10,y+65);
+        pdf.text(a.desc,15,y+altura+5);
+        y+=altura+15;
+      }else{
+        y+=altura+10;
       }
-
-      y+=75;
     });
   }
 
-  pdf.save("Despesas_Cirurtec.pdf");
+  pdf.save("Despesas.pdf");
 }
-
 </script>
 
 </body>
-  </html>
+</html>
