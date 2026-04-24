@@ -303,7 +303,7 @@ function finalizar(){
   pdf.text(`Origem: ${origem.value}`,10,y); y+=5;
 
   [...paradas.children].forEach((p,i)=>{
-    const cidade=p.querySelector("input").value;
+    const cidade = p.value;
     if(cidade){
       pdf.text(`Parada ${i+1}: ${cidade}`,10,y);
       y+=5;
